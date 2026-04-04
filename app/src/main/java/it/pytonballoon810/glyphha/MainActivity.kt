@@ -3,6 +3,8 @@ package it.pytonballoon810.glyphha
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
@@ -38,6 +40,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var debugProgressValueInput: TextInputEditText
     private lateinit var debugProgressMaxInput: TextInputEditText
     private lateinit var debugRawTextInput: TextInputEditText
+    private lateinit var debugCurrentRenderDataText: TextView
     private lateinit var mappingsContainer: LinearLayout
     private lateinit var statusText: TextView
     private lateinit var glyphController: GlyphController
@@ -47,6 +50,15 @@ class MainActivity : ComponentActivity() {
     private var deviceMatrixSize: Int = 13
 
     private val mappings = mutableListOf<SensorMapping>()
+    private val debugRenderHandler = Handler(Looper.getMainLooper())
+    private val debugRenderUpdater = object : Runnable {
+        override fun run() {
+            updateCurrentRenderDataPanel()
+            if (debugTabContent.visibility == View.VISIBLE) {
+                debugRenderHandler.postDelayed(this, DEBUG_RENDER_REFRESH_MS)
+            }
+        }
+    }
 
     private data class IconOption(
         val type: CompletionIconType,
@@ -75,6 +87,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        stopCurrentRenderPolling()
         glyphController.stop()
         super.onDestroy()
     }
@@ -113,6 +126,7 @@ class MainActivity : ComponentActivity() {
         debugProgressValueInput = findViewById(R.id.debugProgressValueInput)
         debugProgressMaxInput = findViewById(R.id.debugProgressMaxInput)
         debugRawTextInput = findViewById(R.id.debugRawTextInput)
+        debugCurrentRenderDataText = findViewById(R.id.debugCurrentRenderDataText)
         mappingsContainer = findViewById(R.id.mappingsContainer)
         statusText = findViewById(R.id.statusText)
 
@@ -262,6 +276,7 @@ class MainActivity : ComponentActivity() {
 
             glyphController.start()
             glyphController.renderProgressRatio((value / max).coerceIn(0.0, 1.0))
+            updateCurrentRenderDataPanel()
             toast("Progress rendered")
         }
 
@@ -274,6 +289,7 @@ class MainActivity : ComponentActivity() {
 
             glyphController.start()
             glyphController.renderRawText(text)
+            updateCurrentRenderDataPanel()
             toast("Number text rendered")
         }
 
@@ -291,12 +307,14 @@ class MainActivity : ComponentActivity() {
                 iconType = selectedType,
                 customIconData = customData
             )
+            updateCurrentRenderDataPanel()
             toast("Completion icon rendered")
         }
 
         findViewById<MaterialButton>(R.id.debugClearButton).setOnClickListener {
             glyphController.start()
             glyphController.clearAppDisplay()
+            updateCurrentRenderDataPanel()
             toast("Glyph display cleared")
         }
     }
@@ -314,10 +332,25 @@ class MainActivity : ComponentActivity() {
         debugTabContent.visibility = if (showMain) View.GONE else View.VISIBLE
 
         if (showMain) {
+            stopCurrentRenderPolling()
             updateAutomaticSync()
         } else {
             stopPolling("Debug mode active")
+            startCurrentRenderPolling()
         }
+    }
+
+    private fun startCurrentRenderPolling() {
+        debugRenderHandler.removeCallbacks(debugRenderUpdater)
+        debugRenderUpdater.run()
+    }
+
+    private fun stopCurrentRenderPolling() {
+        debugRenderHandler.removeCallbacks(debugRenderUpdater)
+    }
+
+    private fun updateCurrentRenderDataPanel() {
+        debugCurrentRenderDataText.text = glyphController.getCurrentRenderData()
     }
 
     private fun startPolling() {
@@ -457,5 +490,9 @@ class MainActivity : ComponentActivity() {
                 }
             )
         }
+    }
+
+    companion object {
+        private const val DEBUG_RENDER_REFRESH_MS = 800L
     }
 }

@@ -49,6 +49,8 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
   - optional secondary sensor text rendered under bar
   - overflow text uses slow billboard-style scrolling
   - completion blink mode and reset rules handled in service logic
+- Debug tab behavior:
+  - current matrix payload panel shows only latest rendered data (no history)
 
 ## Efficient Workflow
 

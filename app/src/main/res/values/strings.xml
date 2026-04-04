@@ -22,6 +22,8 @@
     <string name="debug_progress_title">Test progress bar</string>
     <string name="debug_raw_title">Test number display</string>
     <string name="debug_icon_title">Test completion icons</string>
+    <string name="debug_current_render_title">Current matrix data</string>
+    <string name="debug_current_render_placeholder">OFF</string>
     <string name="debug_hint_progress_value">Progress value</string>
     <string name="debug_hint_progress_max">Progress max value</string>
     <string name="debug_hint_raw_text">Number or text to display</string>

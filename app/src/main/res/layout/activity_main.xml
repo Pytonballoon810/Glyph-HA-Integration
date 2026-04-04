@@ -225,6 +225,28 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="@string/debug_current_render_title"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/debugCurrentRenderDataText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@color/divider"
+                android:padding="10dp"
+                android:text="@string/debug_current_render_placeholder"
+                android:textSize="13sp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="12dp"
+                android:background="@color/divider" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:text="@string/debug_progress_title"
                 android:textStyle="bold" />
 

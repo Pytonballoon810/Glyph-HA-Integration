@@ -15,6 +15,9 @@ import com.nothing.ketchum.GlyphMatrixObject
 
 class GlyphController(private val context: Context) {
     private val matrixManager = GlyphMatrixManager.getInstance(context.applicationContext)
+    private val renderStatePrefs by lazy {
+        context.applicationContext.getSharedPreferences(RENDER_STATE_PREFS, Context.MODE_PRIVATE)
+    }
     private var initialized = false
     private val matrixSize: Int
         get() = Common.getDeviceMatrixLength().coerceAtLeast(1)
@@ -68,6 +71,7 @@ class GlyphController(private val context: Context) {
             matrixManager.closeAppMatrix()
         } catch (_: Exception) {
         }
+        saveCurrentRenderData("OFF")
     }
 
     private fun renderRawNumber(state: SensorState) {
@@ -76,8 +80,9 @@ class GlyphController(private val context: Context) {
     }
 
     fun renderRawText(text: String) {
+        val currentText = text.take(8)
         val obj = GlyphMatrixObject.Builder()
-            .setText(text.take(8))
+            .setText(currentText)
             .setBrightness(255)
             .build()
 
@@ -89,6 +94,8 @@ class GlyphController(private val context: Context) {
             matrixManager.setAppMatrixFrame(frame)
         } catch (_: GlyphException) {
         }
+
+        saveCurrentRenderData(currentText)
     }
 
     fun renderProgressRatio(
@@ -188,6 +195,13 @@ class GlyphController(private val context: Context) {
             matrixManager.setAppMatrixFrame(frame)
         } catch (_: GlyphException) {
         }
+
+        val summary = if (hasSubText) {
+            "${(clamped * 100).toInt()}% | ${normalizedSubText.take(24)}"
+        } else {
+            "${(clamped * 100).toInt()}%"
+        }
+        saveCurrentRenderData(summary)
 
         return hasOverflow
     }
@@ -336,6 +350,7 @@ class GlyphController(private val context: Context) {
                 matrixManager.setAppMatrixFrame(offFrame)
             } catch (_: GlyphException) {
             }
+            saveCurrentRenderData("OFF")
             return
         }
 
@@ -353,6 +368,16 @@ class GlyphController(private val context: Context) {
             matrixManager.setAppMatrixFrame(frame)
         } catch (_: GlyphException) {
         }
+
+        saveCurrentRenderData("ICON: ${iconType.name}")
+    }
+
+    fun getCurrentRenderData(): String {
+        return renderStatePrefs.getString(KEY_CURRENT_RENDER_DATA, "OFF") ?: "OFF"
+    }
+
+    private fun saveCurrentRenderData(data: String) {
+        renderStatePrefs.edit().putString(KEY_CURRENT_RENDER_DATA, data).apply()
     }
 
     private fun buildCompletionIconBitmap(
@@ -488,5 +513,10 @@ class GlyphController(private val context: Context) {
         }
 
         return bitmap
+    }
+
+    companion object {
+        private const val RENDER_STATE_PREFS = "glyph_render_state"
+        private const val KEY_CURRENT_RENDER_DATA = "current_render_data"
     }
 }
