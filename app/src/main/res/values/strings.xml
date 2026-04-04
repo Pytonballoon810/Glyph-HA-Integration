@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Glyph HA Integration</string>
+    <string name="hero_title">Glyph Matrix Control</string>
+    <string name="hero_subtitle">Link Home Assistant sensors and stream live progress to your Nothing phone.</string>
+    <string name="notification_channel_name">Glyph Background Sync</string>
+    <string name="notification_title">Glyph sync running</string>
+    <string name="notification_waiting_config">Waiting for Home Assistant setup</string>
+    <string name="notification_waiting_sensor">Waiting for sensor mappings</string>
+    <string name="notification_syncing">Syncing %1$s</string>
+    <string name="notification_sync_error">Sync error: %1$s</string>
+    <string name="hint_base_url">Home Assistant URL (https://ha.local:8123)</string>
+    <string name="hint_token">Long-lived access token</string>
+    <string name="hint_entity_id">Sensor entity ID (example: sensor.living_room_humidity)</string>
+    <string name="hint_max_value">Max value (for progress mode)</string>
+    <string name="save_connection">Save connection</string>
+    <string name="add_sensor">Add sensor mapping</string>
+    <string name="start_sync">Start sync</string>
+    <string name="stop_sync">Stop sync</string>
+    <string name="mode_progress">Progress bar</string>
+    <string name="mode_raw">Raw number</string>
+    <string name="mappings_title">Linked sensors</string>
+</resources>
