@@ -1,4 +1,4 @@
-package com.pytonballoon810.glyphha
+package it.pytonballoon810.glyphha
 
 enum class DisplayMode {
     PROGRESS,
@@ -8,7 +8,8 @@ enum class DisplayMode {
 data class SensorMapping(
     val entityId: String,
     val mode: DisplayMode,
-    val maxValue: Double = 100.0
+    val maxValue: Double = 100.0,
+    val secondaryTextEntityId: String? = null
 )
 
 data class SensorState(

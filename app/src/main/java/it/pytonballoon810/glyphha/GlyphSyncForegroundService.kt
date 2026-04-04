@@ -1,4 +1,4 @@
-package com.pytonballoon810.glyphha
+package it.pytonballoon810.glyphha
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -97,18 +97,36 @@ class GlyphSyncForegroundService : Service() {
                 glyphController.start()
                 syncProgressStateMap(mappings)
                 val client = HomeAssistantClient(baseUrl, token)
+                val completionIconType = store.loadCompletionIconType()
+                val customIconData = store.loadCustomIconData()
 
                 for (mapping in mappings) {
                     if (!isActive) break
+
+                    var nextDelayMs = POLL_INTERVAL_MS
 
                     try {
                         val state = withContext(Dispatchers.IO) {
                             client.fetchState(mapping.entityId)
                         }
 
+                        val secondaryText = mapping.secondaryTextEntityId?.let { secondaryEntity ->
+                            withContext(Dispatchers.IO) {
+                                client.fetchState(secondaryEntity)
+                            }.rawState
+                        }
+
                         when (mapping.mode) {
                             DisplayMode.RAW_NUMBER -> glyphController.render(mapping, state)
-                            DisplayMode.PROGRESS -> handleProgressMapping(mapping, state)
+                            DisplayMode.PROGRESS -> {
+                                nextDelayMs = handleProgressMapping(
+                                    mapping = mapping,
+                                    state = state,
+                                    secondaryText = secondaryText,
+                                    completionIconType = completionIconType,
+                                    customIconData = customIconData
+                                )
+                            }
                         }
 
                         updateNotification(getString(R.string.notification_syncing, mapping.entityId))
@@ -116,7 +134,7 @@ class GlyphSyncForegroundService : Service() {
                         updateNotification(getString(R.string.notification_sync_error, e.message ?: "unknown"))
                     }
 
-                    delay(POLL_INTERVAL_MS)
+                    delay(nextDelayMs)
                 }
             }
         }
@@ -129,12 +147,24 @@ class GlyphSyncForegroundService : Service() {
         glyphController.stop()
     }
 
-    private fun handleProgressMapping(mapping: SensorMapping, state: SensorState) {
-        val value = state.value ?: return
+    private fun handleProgressMapping(
+        mapping: SensorMapping,
+        state: SensorState,
+        secondaryText: String?,
+        completionIconType: CompletionIconType,
+        customIconData: CustomIconData?
+    ): Long {
+        val value = state.value ?: return POLL_INTERVAL_MS
         val max = mapping.maxValue.coerceAtLeast(1.0)
         val ratio = (value / max).coerceIn(0.0, 1.0)
 
         val progressState = progressStates.getOrPut(mapping.entityId) { ProgressState(trackingEnabled = true) }
+        val normalizedSecondaryText = secondaryText?.trim().orEmpty()
+
+        if (progressState.lastSecondaryText != normalizedSecondaryText) {
+            progressState.lastSecondaryText = normalizedSecondaryText
+            progressState.scrollOffsetPx = 0
+        }
 
         if (ratio <= 0.005) {
             progressState.trackingEnabled = true
@@ -144,23 +174,35 @@ class GlyphSyncForegroundService : Service() {
 
         if (!progressState.trackingEnabled) {
             glyphController.clearAppDisplay()
-            return
+            return POLL_INTERVAL_MS
         }
 
         if (progressState.completedWaitingForScreenOn) {
             progressState.blinkOn = !progressState.blinkOn
-            glyphController.renderCompletionBlink(progressState.blinkOn)
-            return
+            glyphController.renderCompletionBlink(progressState.blinkOn, completionIconType, customIconData)
+            return BLINK_INTERVAL_MS
         }
 
-        if (ratio >= 1.0) {
+        if (ratio >= COMPLETION_THRESHOLD) {
             progressState.completedWaitingForScreenOn = true
             progressState.blinkOn = true
-            glyphController.renderCompletionBlink(true)
-            return
+            glyphController.renderCompletionBlink(true, completionIconType, customIconData)
+            return BLINK_INTERVAL_MS
         }
 
-        glyphController.renderProgressRatio(ratio)
+        val hasOverflow = glyphController.renderProgressRatio(
+            ratio = ratio,
+            subText = normalizedSecondaryText.ifBlank { null },
+            scrollOffsetPx = progressState.scrollOffsetPx
+        )
+
+        if (hasOverflow) {
+            progressState.scrollOffsetPx += 1
+            return TEXT_SCROLL_INTERVAL_MS
+        }
+
+        progressState.scrollOffsetPx = 0
+        return POLL_INTERVAL_MS
     }
 
     private fun onScreenTurnedOn() {
@@ -221,15 +263,20 @@ class GlyphSyncForegroundService : Service() {
     private data class ProgressState(
         var trackingEnabled: Boolean = false,
         var completedWaitingForScreenOn: Boolean = false,
-        var blinkOn: Boolean = false
+        var blinkOn: Boolean = false,
+        var scrollOffsetPx: Int = 0,
+        var lastSecondaryText: String = ""
     )
 
     companion object {
-        const val ACTION_START = "com.pytonballoon810.glyphha.action.START"
-        const val ACTION_STOP = "com.pytonballoon810.glyphha.action.STOP"
+        const val ACTION_START = "it.pytonballoon810.glyphha.action.START"
+        const val ACTION_STOP = "it.pytonballoon810.glyphha.action.STOP"
 
         private const val CHANNEL_ID = "glyph_sync_channel"
         private const val NOTIFICATION_ID = 4242
         private const val POLL_INTERVAL_MS = 5000L
+        private const val BLINK_INTERVAL_MS = 600L
+        private const val TEXT_SCROLL_INTERVAL_MS = 800L
+        private const val COMPLETION_THRESHOLD = 0.999
     }
 }

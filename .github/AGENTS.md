@@ -7,7 +7,7 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
 - Type: Android app (Kotlin + XML), single module `app`.
 - Core feature: Home Assistant sensor polling -> Nothing Glyph Matrix rendering.
 - Runtime model: configuration in `MainActivity`, execution in foreground service.
-- Current package: `com.pytonballoon810.glyphha`.
+- Current package: `it.pytonballoon810.glyphha`.
 
 ## Context-First Rules
 
@@ -19,13 +19,13 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
 
 ## High-Value Files (Read These First)
 
-- `app/src/main/java/com/pytonballoon810/glyphha/MainActivity.kt`
+- `app/src/main/java/it/pytonballoon810/glyphha/MainActivity.kt`
 : Frontend configuration flow and service control.
-- `app/src/main/java/com/pytonballoon810/glyphha/GlyphSyncForegroundService.kt`
+- `app/src/main/java/it/pytonballoon810/glyphha/GlyphSyncForegroundService.kt`
 : Background polling, notification, and render orchestration.
-- `app/src/main/java/com/pytonballoon810/glyphha/GlyphController.kt`
+- `app/src/main/java/it/pytonballoon810/glyphha/GlyphController.kt`
 : Glyph matrix drawing logic (progress bar, arrow, completion icon).
-- `app/src/main/java/com/pytonballoon810/glyphha/HomeAssistantClient.kt`
+- `app/src/main/java/it/pytonballoon810/glyphha/HomeAssistantClient.kt`
 : HA state fetch + numeric parsing.
 - `app/src/main/AndroidManifest.xml`
 : Permissions, service registration, app entry.
@@ -46,6 +46,8 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
   - always-visible outline
   - constrained fill
   - moving arrow marker using custom pixel mask
+  - optional secondary sensor text rendered under bar
+  - overflow text uses slow billboard-style scrolling
   - completion blink mode and reset rules handled in service logic
 
 ## Efficient Workflow
@@ -56,6 +58,7 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
 4. Run `assembleDebug` once after edits.
 5. If device validation is requested, run install + launch via adb.
 6. Summarize changed files and behavior deltas only.
+7. After a task is fully finished and validated, always commit pending changes in git with a clear message.
 
 ## Commands (Reference)
 
@@ -64,7 +67,7 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
 - Install:
   - `adb install -r app/build/outputs/apk/debug/app-debug.apk`
 - Launch:
-  - `adb shell monkey -p com.pytonballoon810.glyphha -c android.intent.category.LAUNCHER 1`
+  - `adb shell monkey -p it.pytonballoon810.glyphha -c android.intent.category.LAUNCHER 1`
 
 ## Update Policy (Mandatory)
 
