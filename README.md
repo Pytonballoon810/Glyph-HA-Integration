@@ -1,50 +1,56 @@
 # Glyph HA Integration
 
-Android starter app that links Home Assistant sensors to Nothing Phone Glyph Matrix output.
+<p align="center">
+  <img src="app/src/main/res/mipmap-nodpi/ic_launcher.png" alt="Glyph HA Integration app icon" width="120" height="120" />
+</p>
 
-## What it does
+<p align="center">
+  Android app that links Home Assistant sensors to Nothing Phone Glyph Matrix output.
+</p>
 
-- Stores your Home Assistant base URL and long-lived token.
-- Lets you link multiple Home Assistant sensor `entity_id` values.
-- Supports 2 Glyph display modes per sensor mapping:
-  - `Progress bar`: fills the matrix based on current value versus configured max value.
-  - `Raw number`: prints the numeric/raw state as text.
-- Polls Home Assistant every 5 seconds and rotates through linked sensors.
+## Highlights
 
-## SDK integration
+- Connects to Home Assistant using your base URL and long-lived access token.
+- Supports multiple linked sensor mappings.
+- Display modes:
+  - `Progress bar`: value/max bar with arrow marker.
+  - `Raw number`: sensor state shown as text.
+- Optional secondary text sensor for progress mode (rendered under the bar).
+- Automatic slow marquee scrolling when secondary text is longer than matrix width.
+- Completion behavior:
+  - Selectable finish icon (`3D Printer`, `Check`, `Trophy`, `Custom`).
+  - Blink animation when progress reaches 100%.
+- Includes a `Debug` tab to test progress, text rendering, and completion icons manually.
 
-This project already expects the Nothing SDK AAR at:
+## SDK Integration
 
-- `app/libs/glyph-matrix-sdk-2.0.aar`
+- Required AAR: `app/libs/glyph-matrix-sdk-2.0.aar`
+- Required permission: `com.nothing.ketchum.permission.ENABLE`
 
-The manifest includes required permission:
+## Requirements
 
-- `com.nothing.ketchum.permission.ENABLE`
-
-## Build requirements
-
-- Android Studio Koala+ (or newer)
+- Android Studio Koala or newer
 - Android SDK 35
 - Java 17
-- A compatible Nothing device with Glyph Matrix support
+- Compatible Nothing phone with Glyph Matrix support
 
-## Run steps
+## Quick Start
 
-1. Open project in Android Studio.
-2. Let Gradle sync.
-3. Connect/install on your Nothing phone.
-4. Launch app.
-5. Save Home Assistant URL and token.
-6. Add one or more sensor mappings.
-7. Tap `Start sync`.
+1. Open the project in Android Studio.
+2. Let Gradle sync and build.
+3. Install on your Nothing phone.
+4. Open the app and save Home Assistant URL + token.
+5. Add at least one sensor mapping.
+6. For progress mode, optionally set a secondary text sensor (for remaining time, status, etc.).
+7. Keep the app running; sync is managed by the foreground service.
 
-## Home Assistant notes
+## Home Assistant Notes
 
-- Create a long-lived token in Home Assistant user profile.
-- Sensor API endpoint used by app: `/api/states/{entity_id}`
-- For progress mode, non-numeric sensor values are ignored.
+- Create a long-lived token in your Home Assistant profile.
+- API endpoint used: `/api/states/{entity_id}`
+- Progress mode ignores non-numeric primary sensor values.
 
-## Important behavior
+## Behavior Notes
 
-- The app uses `setAppMatrixFrame(...)` as recommended for app-controlled rendering.
-- Glyph Toy UI can override app output due to system display priority.
+- Rendering uses `setAppMatrixFrame(...)` for app-controlled Glyph output.
+- System-level Glyph UI can override app output due to priority rules.
