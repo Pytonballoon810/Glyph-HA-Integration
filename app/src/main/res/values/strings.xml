@@ -45,4 +45,22 @@
     <string name="mappings_title">Linked sensors</string>
     <string name="edit_mapping">Edit</string>
     <string name="save_mapping_changes">Save changes</string>
+    <string name="delete_mapping">Delete</string>
+    <string name="status_idle">Idle</string>
+    <string name="status_background_sync_active">Background sync active</string>
+    <string name="status_debug_mode_active">Debug mode active</string>
+    <string name="status_waiting_credentials">Waiting for Home Assistant credentials</string>
+    <string name="status_waiting_mappings">Waiting for sensor mappings</string>
+    <string name="toast_enter_url_token">Enter both URL and token</string>
+    <string name="toast_connection_saved">Connection saved</string>
+    <string name="toast_entity_required">Entity ID is required</string>
+    <string name="toast_completion_icon_saved">Completion icon settings saved</string>
+    <string name="toast_custom_icon_cleared">Custom icon cleared</string>
+    <string name="toast_enter_valid_progress">Enter a valid progress value</string>
+    <string name="toast_enter_text_or_number">Enter text or a number</string>
+    <string name="toast_progress_rendered">Progress rendered</string>
+    <string name="toast_number_rendered">Number text rendered</string>
+    <string name="toast_icon_rendered">Completion icon rendered</string>
+    <string name="toast_display_cleared">Glyph display cleared</string>
+    <string name="toast_mapping_updated">Mapping updated</string>
 </resources>

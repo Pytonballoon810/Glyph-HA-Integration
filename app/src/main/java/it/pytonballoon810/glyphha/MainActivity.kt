@@ -213,18 +213,18 @@ class MainActivity : ComponentActivity() {
             val baseUrl = baseUrlInput.text?.toString().orEmpty().trim()
             val token = tokenInput.text?.toString().orEmpty().trim()
             if (baseUrl.isBlank() || token.isBlank()) {
-                toast("Enter both URL and token")
+                toast(getString(R.string.toast_enter_url_token))
                 return@setOnClickListener
             }
             store.saveConnection(baseUrl, token)
-            toast("Connection saved")
+            toast(getString(R.string.toast_connection_saved))
             updateAutomaticSync()
         }
 
         findViewById<MaterialButton>(R.id.addSensorButton).setOnClickListener {
             val entityId = entityIdInput.text?.toString().orEmpty().trim()
             if (entityId.isBlank()) {
-                toast("Entity ID is required")
+                toast(getString(R.string.toast_entity_required))
                 return@setOnClickListener
             }
 
@@ -257,19 +257,19 @@ class MainActivity : ComponentActivity() {
                 store.saveCustomIconData(customIconEditor.getCustomIconData())
             }
 
-            toast("Completion icon settings saved")
+            toast(getString(R.string.toast_completion_icon_saved))
         }
 
         findViewById<MaterialButton>(R.id.clearCustomIconButton).setOnClickListener {
             customIconEditor.clearPixels()
             store.saveCustomIconData(customIconEditor.getCustomIconData())
-            toast("Custom icon cleared")
+            toast(getString(R.string.toast_custom_icon_cleared))
         }
 
         findViewById<MaterialButton>(R.id.debugRenderProgressButton).setOnClickListener {
             val value = debugProgressValueInput.text?.toString()?.toDoubleOrNull()
             if (value == null) {
-                toast("Enter a valid progress value")
+                toast(getString(R.string.toast_enter_valid_progress))
                 return@setOnClickListener
             }
             val max = debugProgressMaxInput.text?.toString()?.toDoubleOrNull()?.coerceAtLeast(1.0) ?: 100.0
@@ -277,20 +277,20 @@ class MainActivity : ComponentActivity() {
             glyphController.start()
             glyphController.renderProgressRatio((value / max).coerceIn(0.0, 1.0))
             updateCurrentRenderDataPanel()
-            toast("Progress rendered")
+            toast(getString(R.string.toast_progress_rendered))
         }
 
         findViewById<MaterialButton>(R.id.debugRenderRawButton).setOnClickListener {
             val text = debugRawTextInput.text?.toString().orEmpty().trim()
             if (text.isBlank()) {
-                toast("Enter text or a number")
+                toast(getString(R.string.toast_enter_text_or_number))
                 return@setOnClickListener
             }
 
             glyphController.start()
             glyphController.renderRawText(text)
             updateCurrentRenderDataPanel()
-            toast("Number text rendered")
+            toast(getString(R.string.toast_number_rendered))
         }
 
         findViewById<MaterialButton>(R.id.debugRenderIconButton).setOnClickListener {
@@ -308,14 +308,14 @@ class MainActivity : ComponentActivity() {
                 customIconData = customData
             )
             updateCurrentRenderDataPanel()
-            toast("Completion icon rendered")
+            toast(getString(R.string.toast_icon_rendered))
         }
 
         findViewById<MaterialButton>(R.id.debugClearButton).setOnClickListener {
             glyphController.start()
             glyphController.clearAppDisplay()
             updateCurrentRenderDataPanel()
-            toast("Glyph display cleared")
+            toast(getString(R.string.toast_display_cleared))
         }
     }
 
@@ -335,7 +335,7 @@ class MainActivity : ComponentActivity() {
             stopCurrentRenderPolling()
             updateAutomaticSync()
         } else {
-            stopPolling("Debug mode active")
+            stopPolling(getString(R.string.status_debug_mode_active))
             startCurrentRenderPolling()
         }
     }
@@ -358,7 +358,7 @@ class MainActivity : ComponentActivity() {
             action = GlyphSyncForegroundService.ACTION_START
         }
         ContextCompat.startForegroundService(this, intent)
-        statusText.text = "Background sync active"
+        statusText.text = getString(R.string.status_background_sync_active)
     }
 
     private fun stopPolling(reason: String = "Stopped") {
@@ -393,7 +393,7 @@ class MainActivity : ComponentActivity() {
             }
 
             val deleteButton = Button(this).apply {
-                text = "Delete"
+                text = getString(R.string.delete_mapping)
                 setOnClickListener {
                     mappings.removeAt(index)
                     store.saveMappings(mappings)
@@ -449,7 +449,7 @@ class MainActivity : ComponentActivity() {
             .setPositiveButton(getString(R.string.save_mapping_changes)) { _, _ ->
                 val entityId = entityInput.text?.toString().orEmpty().trim()
                 if (entityId.isBlank()) {
-                    toast("Entity ID is required")
+                    toast(getString(R.string.toast_entity_required))
                     return@setPositiveButton
                 }
 
@@ -467,7 +467,7 @@ class MainActivity : ComponentActivity() {
                 store.saveMappings(mappings)
                 renderMappings()
                 updateAutomaticSync()
-                toast("Mapping updated")
+                toast(getString(R.string.toast_mapping_updated))
             }
             .show()
     }
@@ -485,8 +485,8 @@ class MainActivity : ComponentActivity() {
         } else {
             stopPolling(
                 when {
-                    !hasConfig -> "Waiting for Home Assistant credentials"
-                    else -> "Waiting for sensor mappings"
+                    !hasConfig -> getString(R.string.status_waiting_credentials)
+                    else -> getString(R.string.status_waiting_mappings)
                 }
             )
         }
