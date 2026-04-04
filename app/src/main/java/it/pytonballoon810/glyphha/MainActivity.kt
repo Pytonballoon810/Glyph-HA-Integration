@@ -1,11 +1,13 @@
 package it.pytonballoon810.glyphha
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
@@ -350,6 +352,13 @@ class MainActivity : ComponentActivity() {
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
 
+            val editButton = Button(this).apply {
+                text = getString(R.string.edit_mapping)
+                setOnClickListener {
+                    showEditMappingDialog(index, mapping)
+                }
+            }
+
             val deleteButton = Button(this).apply {
                 text = "Delete"
                 setOnClickListener {
@@ -361,9 +370,73 @@ class MainActivity : ComponentActivity() {
             }
 
             row.addView(label)
+            row.addView(editButton)
             row.addView(deleteButton)
             mappingsContainer.addView(row)
         }
+    }
+
+    private fun showEditMappingDialog(index: Int, mapping: SensorMapping) {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 20, 32, 0)
+        }
+
+        val entityInput = EditText(this).apply {
+            hint = getString(R.string.hint_entity_id)
+            setText(mapping.entityId)
+        }
+
+        val modeInput = Spinner(this).apply {
+            val labels = listOf(getString(R.string.mode_progress), getString(R.string.mode_raw))
+            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, labels)
+            setSelection(if (mapping.mode == DisplayMode.PROGRESS) 0 else 1)
+        }
+
+        val maxInput = EditText(this).apply {
+            hint = getString(R.string.hint_max_value)
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText(mapping.maxValue.toString())
+        }
+
+        val secondaryInput = EditText(this).apply {
+            hint = getString(R.string.hint_secondary_text_entity_id)
+            setText(mapping.secondaryTextEntityId.orEmpty())
+        }
+
+        container.addView(entityInput)
+        container.addView(modeInput)
+        container.addView(maxInput)
+        container.addView(secondaryInput)
+
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.edit_mapping))
+            .setView(container)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(getString(R.string.save_mapping_changes)) { _, _ ->
+                val entityId = entityInput.text?.toString().orEmpty().trim()
+                if (entityId.isBlank()) {
+                    toast("Entity ID is required")
+                    return@setPositiveButton
+                }
+
+                val maxValue = maxInput.text?.toString()?.toDoubleOrNull() ?: 100.0
+                val mode = if (modeInput.selectedItemPosition == 0) DisplayMode.PROGRESS else DisplayMode.RAW_NUMBER
+                val secondaryTextEntity = secondaryInput.text?.toString().orEmpty().trim().ifBlank { null }
+
+                mappings[index] = SensorMapping(
+                    entityId = entityId,
+                    mode = mode,
+                    maxValue = maxValue,
+                    secondaryTextEntityId = secondaryTextEntity
+                )
+
+                store.saveMappings(mappings)
+                renderMappings()
+                updateAutomaticSync()
+                toast("Mapping updated")
+            }
+            .show()
     }
 
     private fun toast(text: String) {

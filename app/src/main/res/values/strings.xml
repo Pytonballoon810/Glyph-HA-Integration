@@ -41,4 +41,6 @@
     <string name="mode_progress">Progress bar</string>
     <string name="mode_raw">Raw number</string>
     <string name="mappings_title">Linked sensors</string>
+    <string name="edit_mapping">Edit</string>
+    <string name="save_mapping_changes">Save changes</string>
 </resources>
