@@ -1,0 +1,86 @@
+# AGENTS.md
+
+Purpose: reduce token/context usage while keeping implementation quality high for this repository.
+
+## Project Snapshot
+
+- Type: Android app (Kotlin + XML), single module `app`.
+- Core feature: Home Assistant sensor polling -> Nothing Glyph Matrix rendering.
+- Runtime model: configuration in `MainActivity`, execution in foreground service.
+- Current package: `com.pytonballoon810.glyphha`.
+
+## Context-First Rules
+
+1. Read only what is needed for the user request.
+2. Prefer targeted reads over full-file reads for large files.
+3. Avoid reading generated folders unless debugging build outputs.
+4. Do not inspect `app/build` or `.gradle` unless the task is explicitly build-artifact related.
+5. Reuse this file as the first source of truth before exploring the codebase.
+
+## High-Value Files (Read These First)
+
+- `app/src/main/java/com/pytonballoon810/glyphha/MainActivity.kt`
+: Frontend configuration flow and service control.
+- `app/src/main/java/com/pytonballoon810/glyphha/GlyphSyncForegroundService.kt`
+: Background polling, notification, and render orchestration.
+- `app/src/main/java/com/pytonballoon810/glyphha/GlyphController.kt`
+: Glyph matrix drawing logic (progress bar, arrow, completion icon).
+- `app/src/main/java/com/pytonballoon810/glyphha/HomeAssistantClient.kt`
+: HA state fetch + numeric parsing.
+- `app/src/main/AndroidManifest.xml`
+: Permissions, service registration, app entry.
+- `app/build.gradle.kts`
+: Namespace, applicationId, dependencies, minSdk/targetSdk.
+- `app/src/main/res/layout/activity_main.xml`
+: Main UI layout and hero section.
+
+## Known Constraints and Invariants
+
+- Foreground service is required for reliable background sync.
+- Persistent notification must remain active while syncing.
+- ADB may require `ANDROID_ADB_SERVER_PORT=5037` on this machine.
+- Glyph SDK AAR is local: `app/libs/glyph-matrix-sdk-2.0.aar`.
+- `minSdk` must stay compatible with the Nothing SDK requirement.
+- Progress mode behavior:
+  - centered 3px bar
+  - always-visible outline
+  - constrained fill
+  - moving arrow marker using custom pixel mask
+  - completion blink mode and reset rules handled in service logic
+
+## Efficient Workflow
+
+1. Confirm request scope.
+2. Open only the 1-3 files most likely affected.
+3. Make minimal patch edits.
+4. Run `assembleDebug` once after edits.
+5. If device validation is requested, run install + launch via adb.
+6. Summarize changed files and behavior deltas only.
+
+## Commands (Reference)
+
+- Build:
+  - `./gradlew assembleDebug` (or `gradlew.bat assembleDebug` on Windows)
+- Install:
+  - `adb install -r app/build/outputs/apk/debug/app-debug.apk`
+- Launch:
+  - `adb shell monkey -p com.pytonballoon810.glyphha -c android.intent.category.LAUNCHER 1`
+
+## Update Policy (Mandatory)
+
+This file must be updated whenever any of the following changes:
+
+1. Package name, app id, namespace, module layout, or folder structure.
+2. Foreground/background execution model.
+3. Core rendering behavior (progress bar, arrow mask, completion behavior).
+4. Build/dependency requirements (SDK versions, AAR path, permissions).
+5. Primary entry points or high-value files listed above.
+
+When changing architecture or behavior, update this file in the same commit as the code change.
+
+## Agent Output Guidelines
+
+- Prefer concise deltas over restating full architecture.
+- Reference only files that changed.
+- Include validation status (built, installed, launched) if run.
+- Avoid repeating prior context that is unchanged.

@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.philipp.glyphha"
+    namespace = "com.pytonballoon810.glyphha"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.philipp.glyphha"
+        applicationId = "com.pytonballoon810.glyphha"
         minSdk = 33
         targetSdk = 35
         versionCode = 1

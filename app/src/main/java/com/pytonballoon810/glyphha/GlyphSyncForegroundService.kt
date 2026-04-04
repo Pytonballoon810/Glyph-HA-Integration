@@ -1,4 +1,4 @@
-package com.philipp.glyphha
+package com.pytonballoon810.glyphha
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -225,8 +225,8 @@ class GlyphSyncForegroundService : Service() {
     )
 
     companion object {
-        const val ACTION_START = "com.philipp.glyphha.action.START"
-        const val ACTION_STOP = "com.philipp.glyphha.action.STOP"
+        const val ACTION_START = "com.pytonballoon810.glyphha.action.START"
+        const val ACTION_STOP = "com.pytonballoon810.glyphha.action.STOP"
 
         private const val CHANNEL_ID = "glyph_sync_channel"
         private const val NOTIFICATION_ID = 4242

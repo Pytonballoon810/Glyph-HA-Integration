@@ -1,4 +1,4 @@
-package com.philipp.glyphha
+package com.pytonballoon810.glyphha
 
 import android.content.Intent
 import android.os.Bundle
