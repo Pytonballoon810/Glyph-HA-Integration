@@ -23,6 +23,7 @@ import kotlinx.coroutines.withContext
 
 class GlyphSyncForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var foregroundStarted = false
 
     private lateinit var store: SensorMappingStore
     private lateinit var glyphController: GlyphController
@@ -47,15 +48,17 @@ class GlyphSyncForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        ensureForegroundStarted(getString(R.string.notification_waiting_config))
+
         when (intent?.action) {
             ACTION_STOP -> {
                 stopSyncInternal("Stopped")
                 stopForeground(STOP_FOREGROUND_REMOVE)
+                foregroundStarted = false
                 stopSelf()
                 return START_NOT_STICKY
             }
             ACTION_START, null -> {
-                startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notification_waiting_config)))
                 ensurePolling()
             }
         }
@@ -258,6 +261,12 @@ class GlyphSyncForegroundService : Service() {
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
+    }
+
+    private fun ensureForegroundStarted(content: String) {
+        if (foregroundStarted) return
+        startForeground(NOTIFICATION_ID, buildNotification(content))
+        foregroundStarted = true
     }
 
     private data class ProgressState(
