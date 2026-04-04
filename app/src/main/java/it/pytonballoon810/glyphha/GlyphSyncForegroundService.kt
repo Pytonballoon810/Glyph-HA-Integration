@@ -20,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 class GlyphSyncForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -116,7 +117,7 @@ class GlyphSyncForegroundService : Service() {
                         val secondaryText = mapping.secondaryTextEntityId?.let { secondaryEntity ->
                             withContext(Dispatchers.IO) {
                                 client.fetchState(secondaryEntity)
-                            }.rawState
+                            }.let { formatSecondaryText(it) }
                         }
 
                         when (mapping.mode) {
@@ -222,6 +223,45 @@ class GlyphSyncForegroundService : Service() {
         if (disabledAny) {
             glyphController.clearAppDisplay()
         }
+    }
+
+    private fun formatSecondaryText(state: SensorState): String {
+        val raw = state.rawState.trim()
+
+        val hmMatch = Regex("""(?i)^\s*(\d+)h\s+(\d+)m\s*$""").matchEntire(raw)
+        if (hmMatch != null) {
+            val h = hmMatch.groupValues[1].toIntOrNull() ?: 0
+            val m = hmMatch.groupValues[2].toIntOrNull() ?: 0
+            return when {
+                h > 0 && m > 0 -> "${h}h ${m}m"
+                h > 0 -> "${h}h"
+                else -> "${m}m"
+            }
+        }
+
+        val unit = state.unit?.trim()?.lowercase().orEmpty()
+        val value = state.value
+        if (value != null) {
+            when (unit) {
+                "h", "hr", "hrs", "hour", "hours" -> {
+                    val totalMinutes = (value * 60.0).roundToInt().coerceAtLeast(0)
+                    val hours = totalMinutes / 60
+                    val minutes = totalMinutes % 60
+                    return when {
+                        hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
+                        hours > 0 -> "${hours}h"
+                        else -> "${minutes}m"
+                    }
+                }
+
+                "m", "min", "mins", "minute", "minutes" -> {
+                    val minutes = value.roundToInt().coerceAtLeast(0)
+                    return "${minutes}m"
+                }
+            }
+        }
+
+        return raw
     }
 
     private fun syncProgressStateMap(mappings: List<SensorMapping>) {

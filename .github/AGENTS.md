@@ -47,7 +47,8 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
   - constrained fill
   - moving arrow marker using custom pixel mask
   - optional secondary sensor text rendered under bar
-  - overflow text uses slow billboard-style scrolling
+  - secondary duration-like text is normalized (e.g. `0h 1m` -> `1m`)
+  - overflow text uses slow billboard-style scrolling only when overflow exceeds a small threshold
   - completion blink mode and reset rules handled in service logic
 - Debug tab behavior:
   - current matrix payload panel shows only latest rendered data (no history)

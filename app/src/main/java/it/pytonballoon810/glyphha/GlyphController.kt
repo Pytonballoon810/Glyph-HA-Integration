@@ -221,7 +221,8 @@ class GlyphController(private val context: Context) {
         val contentWidth = getPixelTextWidth(text)
         val drawPadding = 1
         val availableWidth = (side - (drawPadding * 2)).coerceAtLeast(1)
-        val overflow = contentWidth > availableWidth
+        val overflowPx = (contentWidth - availableWidth).coerceAtLeast(0)
+        val overflow = overflowPx > MIN_SCROLL_OVERFLOW_PX
 
         val baseX = if (overflow) {
             val cycle = contentWidth + side + 4
@@ -518,5 +519,6 @@ class GlyphController(private val context: Context) {
     companion object {
         private const val RENDER_STATE_PREFS = "glyph_render_state"
         private const val KEY_CURRENT_RENDER_DATA = "current_render_data"
+        private const val MIN_SCROLL_OVERFLOW_PX = 4
     }
 }
