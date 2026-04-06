@@ -62,6 +62,13 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
 5. If device validation is requested, run install + launch via adb.
 6. Summarize changed files and behavior deltas only.
 7. After a task is fully finished and validated, always commit pending changes in git with a clear message.
+8. After a task is fully finished and validated, automatically attempt flash validation on a connected device using install + launch commands.
+
+## Mandatory Automation Rules
+
+1. Every finished implementation must be committed automatically without waiting for an extra user prompt.
+2. After finishing implementation and local build validation, automatically attempt device flash validation (`adb install -r ...` + launch command) when a device is available.
+3. If no device is connected, report that flash was attempted but skipped due to no detected device.
 
 ## Commands (Reference)
 

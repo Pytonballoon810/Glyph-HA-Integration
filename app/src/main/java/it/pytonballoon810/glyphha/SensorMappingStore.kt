@@ -36,7 +36,12 @@ class SensorMappingStore(context: Context) {
                     remainingTimeEntityId = item.optString("remainingTimeEntityId", "").ifBlank {
                         item.optString("secondaryTextEntityId", "")
                     }.ifBlank { null },
-                    interruptedEntityId = item.optString("interruptedEntityId", "").ifBlank { null }
+                    interruptedEntityId = item.optString("interruptedEntityId", "").ifBlank { null },
+                    genericDisplayMode = GenericDisplayMode.entries.firstOrNull {
+                        it.name == item.optString("genericDisplayMode", GenericDisplayMode.NUMBER.name)
+                    } ?: GenericDisplayMode.NUMBER,
+                    turnOffValue = item.optString("turnOffValue", "").ifBlank { null },
+                    resetValue = item.optString("resetValue", "").ifBlank { null }
                 )
                 continue
             }
@@ -49,7 +54,12 @@ class SensorMappingStore(context: Context) {
                 progressEntityId = legacyEntity,
                 maxValue = item.optDouble("maxValue", 100.0),
                 remainingTimeEntityId = item.optString("secondaryTextEntityId", "").ifBlank { null },
-                interruptedEntityId = null
+                interruptedEntityId = null,
+                genericDisplayMode = GenericDisplayMode.entries.firstOrNull {
+                    it.name == item.optString("mode", "")
+                } ?: GenericDisplayMode.NUMBER,
+                turnOffValue = null,
+                resetValue = null
             )
         }
         return output
@@ -64,6 +74,9 @@ class SensorMappingStore(context: Context) {
                 .put("maxValue", it.maxValue)
                 .put("remainingTimeEntityId", it.remainingTimeEntityId ?: "")
                 .put("interruptedEntityId", it.interruptedEntityId ?: "")
+                .put("genericDisplayMode", it.genericDisplayMode.name)
+                .put("turnOffValue", it.turnOffValue ?: "")
+                .put("resetValue", it.resetValue ?: "")
             array.put(obj)
         }
         prefs.edit().putString(KEY_MAPPINGS, array.toString()).apply()

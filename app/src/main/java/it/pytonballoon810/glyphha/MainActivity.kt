@@ -30,7 +30,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var maxValueInput: TextInputEditText
     private lateinit var remainingTimeEntityIdInput: TextInputEditText
     private lateinit var interruptedEntityIdInput: TextInputEditText
+    private lateinit var turnOffValueInput: TextInputEditText
+    private lateinit var resetValueInput: TextInputEditText
     private lateinit var useCaseSpinner: Spinner
+    private lateinit var genericModeSpinner: Spinner
+    private lateinit var genericModeTitle: TextView
+    private lateinit var genericControlsTitle: TextView
     private lateinit var appTabLayout: TabLayout
     private lateinit var mainTabContent: LinearLayout
     private lateinit var debugTabContent: LinearLayout
@@ -49,6 +54,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var store: SensorMappingStore
     private lateinit var iconOptions: List<IconOption>
     private lateinit var useCaseOptions: List<UseCaseOption>
+    private lateinit var genericModeOptions: List<GenericModeOption>
     private var deviceMatrixSize: Int = 13
 
     private val mappings = mutableListOf<SensorMapping>()
@@ -72,6 +78,11 @@ class MainActivity : ComponentActivity() {
         val label: String
     )
 
+    private data class GenericModeOption(
+        val mode: GenericDisplayMode,
+        val label: String
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -81,10 +92,12 @@ class MainActivity : ComponentActivity() {
 
         bindViews()
         setupUseCaseSpinner()
+        setupGenericModeSpinner()
         setupCompletionIconUi()
         setupTabLayout()
         loadState()
         bindActions()
+        updateUseCaseFieldVisibility(useCaseOptions[useCaseSpinner.selectedItemPosition].useCase)
         updateAutomaticSync()
     }
 
@@ -123,7 +136,12 @@ class MainActivity : ComponentActivity() {
         maxValueInput = findViewById(R.id.maxValueInput)
         remainingTimeEntityIdInput = findViewById(R.id.secondaryTextEntityIdInput)
         interruptedEntityIdInput = findViewById(R.id.interruptedEntityIdInput)
+        turnOffValueInput = findViewById(R.id.turnOffValueInput)
+        resetValueInput = findViewById(R.id.resetValueInput)
         useCaseSpinner = findViewById(R.id.useCaseSpinner)
+        genericModeSpinner = findViewById(R.id.genericModeSpinner)
+        genericModeTitle = findViewById(R.id.genericModeTitle)
+        genericControlsTitle = findViewById(R.id.genericControlsTitle)
         appTabLayout = findViewById(R.id.appTabLayout)
         mainTabContent = findViewById(R.id.mainTabContent)
         debugTabContent = findViewById(R.id.debugTabContent)
@@ -147,6 +165,10 @@ class MainActivity : ComponentActivity() {
             UseCaseOption(
                 useCase = UseCaseType.TRACK_3D_PRINTER_PROGRESS,
                 label = getString(R.string.usecase_printer_tracking)
+            ),
+            UseCaseOption(
+                useCase = UseCaseType.TRACK_GENERIC_SENSOR,
+                label = getString(R.string.usecase_generic_tracking)
             )
         )
 
@@ -154,6 +176,28 @@ class MainActivity : ComponentActivity() {
             this,
             android.R.layout.simple_spinner_dropdown_item,
             useCaseOptions.map { it.label }
+        )
+
+        useCaseSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                updateUseCaseFieldVisibility(useCaseOptions[position].useCase)
+            }
+
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {
+            }
+        }
+    }
+
+    private fun setupGenericModeSpinner() {
+        genericModeOptions = listOf(
+            GenericModeOption(GenericDisplayMode.PROGRESS, getString(R.string.generic_mode_progress)),
+            GenericModeOption(GenericDisplayMode.NUMBER, getString(R.string.generic_mode_number))
+        )
+
+        genericModeSpinner.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            genericModeOptions.map { it.label }
         )
     }
 
@@ -240,8 +284,8 @@ class MainActivity : ComponentActivity() {
         }
 
         findViewById<MaterialButton>(R.id.addSensorButton).setOnClickListener {
-            val progressEntityId = progressEntityIdInput.text?.toString().orEmpty().trim()
-            if (progressEntityId.isBlank()) {
+            val primaryEntityId = progressEntityIdInput.text?.toString().orEmpty().trim()
+            if (primaryEntityId.isBlank()) {
                 toast(getString(R.string.toast_entity_required))
                 return@setOnClickListener
             }
@@ -249,14 +293,20 @@ class MainActivity : ComponentActivity() {
             val maxValue = maxValueInput.text?.toString()?.toDoubleOrNull() ?: 100.0
             val remainingEntityId = remainingTimeEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null }
             val interruptedEntityId = interruptedEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null }
+            val turnOffValue = turnOffValueInput.text?.toString().orEmpty().trim().ifBlank { null }
+            val resetValue = resetValueInput.text?.toString().orEmpty().trim().ifBlank { null }
             val useCase = useCaseOptions[useCaseSpinner.selectedItemPosition].useCase
+            val genericMode = genericModeOptions[genericModeSpinner.selectedItemPosition].mode
 
             mappings += SensorMapping(
                 useCase = useCase,
-                progressEntityId = progressEntityId,
+                progressEntityId = primaryEntityId,
                 maxValue = maxValue,
-                remainingTimeEntityId = remainingEntityId,
-                interruptedEntityId = interruptedEntityId
+                remainingTimeEntityId = if (useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) remainingEntityId else null,
+                interruptedEntityId = if (useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) interruptedEntityId else null,
+                genericDisplayMode = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericMode else GenericDisplayMode.NUMBER,
+                turnOffValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) turnOffValue else null,
+                resetValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) resetValue else null
             )
 
             store.saveMappings(mappings)
@@ -264,6 +314,8 @@ class MainActivity : ComponentActivity() {
             progressEntityIdInput.setText("")
             remainingTimeEntityIdInput.setText("")
             interruptedEntityIdInput.setText("")
+            turnOffValueInput.setText("")
+            resetValueInput.setText("")
             updateAutomaticSync()
         }
 
@@ -337,6 +389,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun updateUseCaseFieldVisibility(useCase: UseCaseType) {
+        val printerVisible = useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS
+        val genericVisible = useCase == UseCaseType.TRACK_GENERIC_SENSOR
+
+        setViewAndParentVisibility(remainingTimeEntityIdInput, printerVisible)
+        setViewAndParentVisibility(interruptedEntityIdInput, printerVisible)
+
+        genericModeTitle.visibility = if (genericVisible) View.VISIBLE else View.GONE
+        genericModeSpinner.visibility = if (genericVisible) View.VISIBLE else View.GONE
+        genericControlsTitle.visibility = if (genericVisible) View.VISIBLE else View.GONE
+        setViewAndParentVisibility(turnOffValueInput, genericVisible)
+        setViewAndParentVisibility(resetValueInput, genericVisible)
+    }
+
+    private fun setViewAndParentVisibility(view: View, visible: Boolean) {
+        val target = if (view.parent is View) view.parent as View else view
+        target.visibility = if (visible) View.VISIBLE else View.GONE
+    }
+
     private fun updateCustomEditorVisibility(type: CompletionIconType) {
         val isCustom = type == CompletionIconType.CUSTOM
         customEditorTitle.visibility = if (isCustom) View.VISIBLE else View.GONE
@@ -398,9 +469,18 @@ class MainActivity : ComponentActivity() {
             }
 
             val label = TextView(this).apply {
-                val remaining = mapping.remainingTimeEntityId?.let { ", time=$it" } ?: ""
-                val interrupted = mapping.interruptedEntityId?.let { ", interrupted=$it" } ?: ""
-                text = "${mapping.progressEntityId} (max=${mapping.maxValue}$remaining$interrupted)"
+                text = when (mapping.useCase) {
+                    UseCaseType.TRACK_3D_PRINTER_PROGRESS -> {
+                        val remaining = mapping.remainingTimeEntityId?.let { ", time=$it" } ?: ""
+                        val interrupted = mapping.interruptedEntityId?.let { ", interrupted=$it" } ?: ""
+                        "Printer: ${mapping.progressEntityId} (max=${mapping.maxValue}$remaining$interrupted)"
+                    }
+                    UseCaseType.TRACK_GENERIC_SENSOR -> {
+                        val turnOff = mapping.turnOffValue?.let { ", off=$it" } ?: ""
+                        val reset = mapping.resetValue?.let { ", reset=$it" } ?: ""
+                        "Generic: ${mapping.progressEntityId} (${mapping.genericDisplayMode.name}, max=${mapping.maxValue}$turnOff$reset)"
+                    }
+                }
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
 
@@ -451,6 +531,18 @@ class MainActivity : ComponentActivity() {
             setSelection(selectedIndex)
         }
 
+        val genericModeInput = Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                genericModeOptions.map { it.label }
+            )
+            val selectedIndex = genericModeOptions.indexOfFirst { it.mode == mapping.genericDisplayMode }
+                .takeIf { it >= 0 }
+                ?: 0
+            setSelection(selectedIndex)
+        }
+
         val maxInput = EditText(this).apply {
             hint = getString(R.string.hint_max_value)
             inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
@@ -467,11 +559,24 @@ class MainActivity : ComponentActivity() {
             setText(mapping.interruptedEntityId.orEmpty())
         }
 
+        val turnOffInput = EditText(this).apply {
+            hint = getString(R.string.hint_turn_off_value)
+            setText(mapping.turnOffValue.orEmpty())
+        }
+
+        val resetInput = EditText(this).apply {
+            hint = getString(R.string.hint_reset_value)
+            setText(mapping.resetValue.orEmpty())
+        }
+
         container.addView(progressInput)
         container.addView(useCaseInput)
+        container.addView(genericModeInput)
         container.addView(maxInput)
         container.addView(remainingInput)
         container.addView(interruptedInput)
+        container.addView(turnOffInput)
+        container.addView(resetInput)
 
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.edit_mapping))
@@ -487,14 +592,20 @@ class MainActivity : ComponentActivity() {
                 val maxValue = maxInput.text?.toString()?.toDoubleOrNull() ?: 100.0
                 val remainingEntityId = remainingInput.text?.toString().orEmpty().trim().ifBlank { null }
                 val interruptedEntityId = interruptedInput.text?.toString().orEmpty().trim().ifBlank { null }
+                val turnOffValue = turnOffInput.text?.toString().orEmpty().trim().ifBlank { null }
+                val resetValue = resetInput.text?.toString().orEmpty().trim().ifBlank { null }
                 val useCase = useCaseOptions[useCaseInput.selectedItemPosition].useCase
+                val genericMode = genericModeOptions[genericModeInput.selectedItemPosition].mode
 
                 mappings[index] = SensorMapping(
                     useCase = useCase,
                     progressEntityId = progressEntityId,
                     maxValue = maxValue,
-                    remainingTimeEntityId = remainingEntityId,
-                    interruptedEntityId = interruptedEntityId
+                    remainingTimeEntityId = if (useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) remainingEntityId else null,
+                    interruptedEntityId = if (useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) interruptedEntityId else null,
+                    genericDisplayMode = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericMode else GenericDisplayMode.NUMBER,
+                    turnOffValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) turnOffValue else null,
+                    resetValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) resetValue else null
                 )
 
                 store.saveMappings(mappings)

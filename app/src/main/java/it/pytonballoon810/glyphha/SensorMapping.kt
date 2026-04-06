@@ -1,7 +1,13 @@
 package it.pytonballoon810.glyphha
 
 enum class UseCaseType {
-    TRACK_3D_PRINTER_PROGRESS
+    TRACK_3D_PRINTER_PROGRESS,
+    TRACK_GENERIC_SENSOR
+}
+
+enum class GenericDisplayMode {
+    PROGRESS,
+    NUMBER
 }
 
 data class SensorMapping(
@@ -9,7 +15,10 @@ data class SensorMapping(
     val progressEntityId: String,
     val maxValue: Double = 100.0,
     val remainingTimeEntityId: String? = null,
-    val interruptedEntityId: String? = null
+    val interruptedEntityId: String? = null,
+    val genericDisplayMode: GenericDisplayMode = GenericDisplayMode.NUMBER,
+    val turnOffValue: String? = null,
+    val resetValue: String? = null
 )
 
 data class SensorState(

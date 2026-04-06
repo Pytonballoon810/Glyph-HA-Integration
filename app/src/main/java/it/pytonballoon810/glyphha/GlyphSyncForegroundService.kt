@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class GlyphSyncForegroundService : Service() {
@@ -34,6 +35,7 @@ class GlyphSyncForegroundService : Service() {
 
     private var pollingJob: Job? = null
     private val progressStates = mutableMapOf<String, ProgressState>()
+    private val genericStates = mutableMapOf<String, GenericState>()
 
     private val screenOnReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -102,7 +104,7 @@ class GlyphSyncForegroundService : Service() {
                 }
 
                 glyphController.start()
-                syncProgressStateMap(mappings)
+                syncStateMaps(mappings)
                 val client = HomeAssistantClient(baseUrl, token)
                 val completionIconType = store.loadCompletionIconType()
                 val customIconData = store.loadCustomIconData()
@@ -113,31 +115,17 @@ class GlyphSyncForegroundService : Service() {
                     var nextDelayMs = POLL_INTERVAL_MS
 
                     try {
-                        val progressState = withContext(Dispatchers.IO) {
-                            client.fetchState(mapping.progressEntityId)
-                        }
-
-                        val remainingText = mapping.remainingTimeEntityId?.let { remainingEntity ->
-                            withContext(Dispatchers.IO) {
-                                client.fetchState(remainingEntity)
-                            }.let { formatSecondaryText(it) }
-                        }
-
-                        val interrupted = mapping.interruptedEntityId?.let { interruptedEntity ->
-                            withContext(Dispatchers.IO) {
-                                client.fetchState(interruptedEntity)
-                            }.let { isInterruptedState(it) }
-                        } ?: false
-
-                        nextDelayMs = if (interrupted) {
-                            handleInterruptedMapping(mapping)
-                        } else {
-                            handleProgressMapping(
+                        nextDelayMs = when (mapping.useCase) {
+                            UseCaseType.TRACK_3D_PRINTER_PROGRESS -> handlePrinterUseCase(
+                                client = client,
                                 mapping = mapping,
-                                progressState = progressState,
-                                secondaryText = remainingText,
                                 completionIconType = completionIconType,
                                 customIconData = customIconData
+                            )
+
+                            UseCaseType.TRACK_GENERIC_SENSOR -> handleGenericUseCase(
+                                client = client,
+                                mapping = mapping
                             )
                         }
 
@@ -150,6 +138,97 @@ class GlyphSyncForegroundService : Service() {
                 }
             }
         }
+    }
+
+    private suspend fun handlePrinterUseCase(
+        client: HomeAssistantClient,
+        mapping: SensorMapping,
+        completionIconType: CompletionIconType,
+        customIconData: CustomIconData?
+    ): Long {
+        val progressState = withContext(Dispatchers.IO) {
+            client.fetchState(mapping.progressEntityId)
+        }
+
+        val remainingText = mapping.remainingTimeEntityId?.let { remainingEntity ->
+            withContext(Dispatchers.IO) {
+                client.fetchState(remainingEntity)
+            }.let { formatSecondaryText(it) }
+        }
+
+        val interrupted = mapping.interruptedEntityId?.let { interruptedEntity ->
+            withContext(Dispatchers.IO) {
+                client.fetchState(interruptedEntity)
+            }.let { isInterruptedState(it) }
+        } ?: false
+
+        return if (interrupted) {
+            handleInterruptedMapping(mapping)
+        } else {
+            handleProgressMapping(
+                mapping = mapping,
+                progressState = progressState,
+                secondaryText = remainingText,
+                completionIconType = completionIconType,
+                customIconData = customIconData
+            )
+        }
+    }
+
+    private suspend fun handleGenericUseCase(
+        client: HomeAssistantClient,
+        mapping: SensorMapping
+    ): Long {
+        val sensorState = withContext(Dispatchers.IO) {
+            client.fetchState(mapping.progressEntityId)
+        }
+
+        val runtime = genericStates.getOrPut(mapping.progressEntityId) { GenericState(enabled = true) }
+        val rawState = sensorState.rawState.trim()
+
+        if (matchesConfiguredValue(rawState, sensorState.value, mapping.resetValue)) {
+            runtime.enabled = true
+        }
+
+        if (matchesConfiguredValue(rawState, sensorState.value, mapping.turnOffValue)) {
+            runtime.enabled = false
+            glyphController.clearAppDisplay()
+            return POLL_INTERVAL_MS
+        }
+
+        if (!runtime.enabled) {
+            glyphController.clearAppDisplay()
+            return POLL_INTERVAL_MS
+        }
+
+        when (mapping.genericDisplayMode) {
+            GenericDisplayMode.PROGRESS -> {
+                val value = sensorState.value ?: return POLL_INTERVAL_MS
+                val max = mapping.maxValue.coerceAtLeast(1.0)
+                glyphController.renderProgressRatio((value / max).coerceIn(0.0, 1.0))
+            }
+
+            GenericDisplayMode.NUMBER -> {
+                glyphController.renderRawText(sensorState.rawState)
+            }
+        }
+
+        return POLL_INTERVAL_MS
+    }
+
+    private fun matchesConfiguredValue(rawState: String, numericState: Double?, configuredValue: String?): Boolean {
+        val configured = configuredValue?.trim().orEmpty()
+        if (configured.isBlank()) return false
+
+        if (rawState.equals(configured, ignoreCase = true)) return true
+
+        val configuredNumeric = configured
+            .replace("%", "")
+            .replace(",", ".")
+            .replace(Regex("[^0-9+\\-\\.]"), "")
+            .toDoubleOrNull()
+
+        return configuredNumeric != null && numericState != null && abs(configuredNumeric - numericState) < 0.000001
     }
 
     private fun stopSyncInternal(status: String) {
@@ -297,14 +376,25 @@ class GlyphSyncForegroundService : Service() {
             raw == "1"
     }
 
-    private fun syncProgressStateMap(mappings: List<SensorMapping>) {
-        val validProgressIds = mappings
+    private fun syncStateMaps(mappings: List<SensorMapping>) {
+        val validPrinterIds = mappings
+            .filter { it.useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS }
             .map { it.progressEntityId }
             .toSet()
 
-        progressStates.keys.retainAll(validProgressIds)
-        validProgressIds.forEach { progressEntityId ->
+        val validGenericIds = mappings
+            .filter { it.useCase == UseCaseType.TRACK_GENERIC_SENSOR }
+            .map { it.progressEntityId }
+            .toSet()
+
+        progressStates.keys.retainAll(validPrinterIds)
+        validPrinterIds.forEach { progressEntityId ->
             progressStates.putIfAbsent(progressEntityId, ProgressState(trackingEnabled = true))
+        }
+
+        genericStates.keys.retainAll(validGenericIds)
+        validGenericIds.forEach { sensorId ->
+            genericStates.putIfAbsent(sensorId, GenericState(enabled = true))
         }
     }
 
@@ -356,6 +446,10 @@ class GlyphSyncForegroundService : Service() {
         var blinkOn: Boolean = false,
         var scrollOffsetPx: Int = 0,
         var lastSecondaryText: String = ""
+    )
+
+    private data class GenericState(
+        var enabled: Boolean = true
     )
 
     companion object {
