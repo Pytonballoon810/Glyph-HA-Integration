@@ -14,6 +14,7 @@
     <string name="clear_custom_icon">Clear custom icon</string>
     <string name="icon_printer">3D Printer</string>
     <string name="icon_check">Check Mark</string>
+    <string name="icon_cross">Cross (X)</string>
     <string name="icon_trophy">Trophy</string>
     <string name="icon_custom">Custom Drawing</string>
     <string name="custom_editor_title">Custom icon editor (device matrix size)</string>

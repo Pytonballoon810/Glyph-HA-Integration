@@ -54,6 +54,9 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
   - supports progress or number/text render mode
   - supports configurable turn-off and reset values to control runtime tracking enablement
   - supports optional error sensor + trigger value that renders a selected error icon when matched
+- Icon behavior:
+  - predefined icons are loaded from monochrome bitmap mask files in `app/src/main/assets/icons/`
+  - each predefined icon has dedicated variants for 13x13 (Phone 4) and 25x25 (Phone 3) matrix sizes
 - Debug tab behavior:
   - current matrix payload panel shows only latest rendered data (no history)
 

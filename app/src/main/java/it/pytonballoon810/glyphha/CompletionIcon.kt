@@ -3,6 +3,7 @@ package it.pytonballoon810.glyphha
 enum class CompletionIconType {
     PRINTER,
     CHECK,
+    CROSS,
     TROPHY,
     CUSTOM
 }

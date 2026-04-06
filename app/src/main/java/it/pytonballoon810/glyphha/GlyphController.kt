@@ -74,7 +74,11 @@ class GlyphController(private val context: Context) {
     }
 
     fun renderInterruptedX() {
-        val interruptedBitmap = buildInterruptedBitmap(matrixSize)
+        val interruptedBitmap = buildCompletionIconBitmap(
+            size = matrixSize,
+            iconType = CompletionIconType.CROSS,
+            customIconData = null
+        )
         val iconObject = GlyphMatrixObject.Builder()
             .setImageSource(interruptedBitmap)
             .setBrightness(255)
@@ -399,12 +403,42 @@ class GlyphController(private val context: Context) {
         iconType: CompletionIconType,
         customIconData: CustomIconData?
     ): Bitmap {
+        if (iconType != CompletionIconType.CUSTOM) {
+            val fromAssets = loadIconBitmapFromAssets(iconType, size)
+            if (fromAssets != null) return fromAssets
+        }
+
         return when (iconType) {
             CompletionIconType.PRINTER -> buildPrinterBitmap(size)
             CompletionIconType.CHECK -> buildCheckBitmap(size)
+            CompletionIconType.CROSS -> buildCrossBitmap(size)
             CompletionIconType.TROPHY -> buildTrophyBitmap(size)
             CompletionIconType.CUSTOM -> buildCustomBitmap(size, customIconData)
         }
+    }
+
+    private fun loadIconBitmapFromAssets(iconType: CompletionIconType, size: Int): Bitmap? {
+        val iconName = when (iconType) {
+            CompletionIconType.PRINTER -> "printer"
+            CompletionIconType.CHECK -> "check"
+            CompletionIconType.CROSS -> "cross"
+            CompletionIconType.TROPHY -> "trophy"
+            CompletionIconType.CUSTOM -> return null
+        }
+
+        val bucket = if (size >= 20) "25" else "13"
+        val path = "icons/$bucket/$iconName.txt"
+
+        val lines = try {
+            context.assets.open(path).bufferedReader().use { reader ->
+                reader.readLines().map { it.trimEnd() }.filter { it.isNotBlank() }
+            }
+        } catch (_: Exception) {
+            return null
+        }
+
+        if (lines.isEmpty()) return null
+        return buildPatternBitmap(size, lines)
     }
 
     private fun buildPrinterBitmap(size: Int): Bitmap {
@@ -470,6 +504,25 @@ class GlyphController(private val context: Context) {
         canvas.drawRect((size * 0.34f), (size * 0.62f), (size * 0.66f), (size * 0.72f), paint)
 
         return bitmap
+    }
+
+    private fun buildCrossBitmap(size: Int): Bitmap {
+        val pattern = listOf(
+            "XX.........XX",
+            ".XX.......XX.",
+            "..XX.....XX..",
+            "...XX...XX...",
+            "....XX.XX....",
+            ".....XXX.....",
+            "......X......",
+            ".....XXX.....",
+            "....XX.XX....",
+            "...XX...XX...",
+            "..XX.....XX..",
+            ".XX.......XX.",
+            "XX.........XX"
+        )
+        return buildPatternBitmap(size, pattern)
     }
 
     private fun buildCustomBitmap(size: Int, customIconData: CustomIconData?): Bitmap {

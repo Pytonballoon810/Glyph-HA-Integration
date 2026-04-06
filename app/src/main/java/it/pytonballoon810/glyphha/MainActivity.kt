@@ -211,6 +211,7 @@ class MainActivity : ComponentActivity() {
         iconOptions = listOf(
             IconOption(CompletionIconType.PRINTER, getString(R.string.icon_printer)),
             IconOption(CompletionIconType.CHECK, getString(R.string.icon_check)),
+            IconOption(CompletionIconType.CROSS, getString(R.string.icon_cross)),
             IconOption(CompletionIconType.TROPHY, getString(R.string.icon_trophy)),
             IconOption(CompletionIconType.CUSTOM, getString(R.string.icon_custom))
         )
