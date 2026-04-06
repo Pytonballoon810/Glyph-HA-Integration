@@ -2,10 +2,10 @@
     <color name="ha_blue">#0E7A73</color>
     <color name="ha_blue_dark">#0B5E58</color>
     <color name="on_ha_blue">#FFFFFF</color>
-    <color name="surface">#EDF3F4</color>
-    <color name="card_surface">#FFFFFF</color>
-    <color name="card_stroke">#CADADD</color>
-    <color name="on_surface">#102027</color>
-    <color name="on_surface_muted">#48606B</color>
-    <color name="divider">#1D5F7B87</color>
+    <color name="surface">#0E151A</color>
+    <color name="card_surface">#172229</color>
+    <color name="card_stroke">#25353F</color>
+    <color name="on_surface">#E9F2F5</color>
+    <color name="on_surface_muted">#9CB2BD</color>
+    <color name="divider">#3454697A</color>
 </resources>

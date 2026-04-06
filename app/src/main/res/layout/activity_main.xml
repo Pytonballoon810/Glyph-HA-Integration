@@ -47,7 +47,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:background="@drawable/bg_status_pill"
+                    android:background="@drawable/bg_hero_tag_pill"
                     android:paddingLeft="10dp"
                     android:paddingTop="4dp"
                     android:paddingRight="10dp"
@@ -66,6 +66,8 @@
             android:layout_marginBottom="12dp"
             app:tabIndicatorColor="@color/ha_blue"
             app:tabIndicatorFullWidth="false"
+            app:tabSelectedTextColor="@color/on_surface"
+            app:tabTextColor="@color/on_surface_muted"
             app:tabTextAppearance="@style/TextAppearance.MaterialComponents.Subtitle2" />
 
         <LinearLayout
