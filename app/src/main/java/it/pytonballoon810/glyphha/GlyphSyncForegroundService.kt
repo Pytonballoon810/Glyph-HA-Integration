@@ -250,13 +250,18 @@ class GlyphSyncForegroundService : Service() {
 
         if (rawState.equals(configured, ignoreCase = true)) return true
 
-        val configuredNumeric = configured
+        val configuredNumeric = parseComparableNumeric(configured)
+        val currentNumeric = numericState ?: parseComparableNumeric(rawState)
+
+        return configuredNumeric != null && currentNumeric != null && abs(configuredNumeric - currentNumeric) < NUMERIC_MATCH_EPSILON
+    }
+
+    private fun parseComparableNumeric(value: String): Double? {
+        return value
             .replace("%", "")
             .replace(",", ".")
             .replace(Regex("[^0-9+\\-\\.]"), "")
             .toDoubleOrNull()
-
-        return configuredNumeric != null && numericState != null && abs(configuredNumeric - numericState) < 0.000001
     }
 
     private fun stopSyncInternal(status: String) {
@@ -507,5 +512,6 @@ class GlyphSyncForegroundService : Service() {
         private const val TEXT_SCROLL_INTERVAL_MS = 800L
         private const val INTERRUPTED_REFRESH_MS = 1000L
         private const val COMPLETION_THRESHOLD = 0.999
+        private const val NUMERIC_MATCH_EPSILON = 0.000001
     }
 }

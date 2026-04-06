@@ -34,6 +34,40 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
 - `app/src/main/res/layout/activity_main.xml`
 : Main UI layout and hero section.
 
+## Production Structure (Source of Truth)
+
+- `app/src/main/java/it/pytonballoon810/glyphha/MainActivity.kt`
+: UI composition and user actions only. It should collect inputs, persist config through `SensorMappingStore`, and dispatch service intents.
+- `app/src/main/java/it/pytonballoon810/glyphha/SensorMapping.kt`
+: Domain model layer (use cases, display modes, sensor mapping fields).
+- `app/src/main/java/it/pytonballoon810/glyphha/SensorMappingStore.kt`
+: Persistence boundary. All shared preferences keys and migration logic must stay centralized here.
+- `app/src/main/java/it/pytonballoon810/glyphha/GlyphSyncForegroundService.kt`
+: Runtime orchestration layer. Poll loop, notification state, mapping runtime state machines, and trigger-based rendering decisions.
+- `app/src/main/java/it/pytonballoon810/glyphha/HomeAssistantClient.kt`
+: Home Assistant transport and state parsing boundary.
+- `app/src/main/java/it/pytonballoon810/glyphha/GlyphController.kt`
+: Glyph rendering primitives and icon loading behavior.
+- `app/src/main/assets/icons/13/` and `app/src/main/assets/icons/25/`
+: Monochrome icon masks for predefined icon types. Keep both matrix variants in sync.
+
+## Maintainability Rules
+
+1. Keep UI code (`MainActivity`) declarative and thin. Business logic belongs in service/controller/store helpers.
+2. Avoid duplicated mapping assembly logic. Reuse shared helper functions for mapping construction and validation.
+3. All persisted schema changes must include backward-compatible migration logic in `SensorMappingStore`.
+4. Runtime state decisions (completion/reset/turn-off/error trigger) must be isolated in service helpers with clear naming.
+5. Any new predefined icon must include both 13x13 and 25x25 asset variants and selector labels.
+6. Keep strings in `res/values/strings.xml`; avoid hardcoded user-visible text in Kotlin.
+7. Preserve stable intent action constants for service commands unless an explicit migration is planned.
+
+## Validation Checklist (Required)
+
+1. `gradlew.bat assembleDebug`
+2. `adb install -r app/build/outputs/apk/debug/app-debug.apk` (when a device is connected)
+3. `adb shell monkey -p it.pytonballoon810.glyphha -c android.intent.category.LAUNCHER 1` (when a device is connected)
+4. confirm process alive with `adb shell pidof it.pytonballoon810.glyphha` when launch validation is requested
+
 ## Known Constraints and Invariants
 
 - Foreground service is required for reliable background sync.

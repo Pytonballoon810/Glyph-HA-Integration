@@ -86,6 +86,19 @@ class MainActivity : ComponentActivity() {
         val label: String
     )
 
+    private data class MappingConfig(
+        val useCase: UseCaseType,
+        val progressEntityId: String,
+        val maxValue: Double,
+        val remainingEntityId: String?,
+        val interruptedEntityId: String?,
+        val genericMode: GenericDisplayMode,
+        val turnOffValue: String?,
+        val resetValue: String?,
+        val genericErrorEntityId: String?,
+        val genericErrorTriggerValue: String?
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -321,38 +334,24 @@ class MainActivity : ComponentActivity() {
                 return@setOnClickListener
             }
 
-            val maxValue = maxValueInput.text?.toString()?.toDoubleOrNull() ?: 100.0
-            val remainingEntityId = remainingTimeEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null }
-            val interruptedEntityId = interruptedEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null }
-            val turnOffValue = turnOffValueInput.text?.toString().orEmpty().trim().ifBlank { null }
-            val resetValue = resetValueInput.text?.toString().orEmpty().trim().ifBlank { null }
-            val genericErrorEntityId = genericErrorEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null }
-            val genericErrorTriggerValue = genericErrorTriggerValueInput.text?.toString().orEmpty().trim().ifBlank { null }
-            val useCase = useCaseOptions[useCaseSpinner.selectedItemPosition].useCase
-            val genericMode = genericModeOptions[genericModeSpinner.selectedItemPosition].mode
-
-            mappings += SensorMapping(
-                useCase = useCase,
+            val config = MappingConfig(
+                useCase = useCaseOptions[useCaseSpinner.selectedItemPosition].useCase,
                 progressEntityId = primaryEntityId,
-                maxValue = maxValue,
-                remainingTimeEntityId = if (useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) remainingEntityId else null,
-                interruptedEntityId = if (useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) interruptedEntityId else null,
-                genericDisplayMode = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericMode else GenericDisplayMode.NUMBER,
-                turnOffValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) turnOffValue else null,
-                resetValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) resetValue else null,
-                genericErrorEntityId = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericErrorEntityId else null,
-                genericErrorTriggerValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericErrorTriggerValue else null
+                maxValue = maxValueInput.text?.toString()?.toDoubleOrNull() ?: 100.0,
+                remainingEntityId = remainingTimeEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null },
+                interruptedEntityId = interruptedEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null },
+                genericMode = genericModeOptions[genericModeSpinner.selectedItemPosition].mode,
+                turnOffValue = turnOffValueInput.text?.toString().orEmpty().trim().ifBlank { null },
+                resetValue = resetValueInput.text?.toString().orEmpty().trim().ifBlank { null },
+                genericErrorEntityId = genericErrorEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null },
+                genericErrorTriggerValue = genericErrorTriggerValueInput.text?.toString().orEmpty().trim().ifBlank { null }
             )
+
+            mappings += toSensorMapping(config)
 
             store.saveMappings(mappings)
             renderMappings()
-            progressEntityIdInput.setText("")
-            remainingTimeEntityIdInput.setText("")
-            interruptedEntityIdInput.setText("")
-            turnOffValueInput.setText("")
-            resetValueInput.setText("")
-            genericErrorEntityIdInput.setText("")
-            genericErrorTriggerValueInput.setText("")
+            resetMappingFormInputs()
             notifyMappingsUpdated()
             updateAutomaticSync()
         }
@@ -522,20 +521,7 @@ class MainActivity : ComponentActivity() {
             }
 
             val label = TextView(this).apply {
-                text = when (mapping.useCase) {
-                    UseCaseType.TRACK_3D_PRINTER_PROGRESS -> {
-                        val remaining = mapping.remainingTimeEntityId?.let { ", time=$it" } ?: ""
-                        val interrupted = mapping.interruptedEntityId?.let { ", interrupted=$it" } ?: ""
-                        "Printer: ${mapping.progressEntityId} (max=${mapping.maxValue}$remaining$interrupted)"
-                    }
-                    UseCaseType.TRACK_GENERIC_SENSOR -> {
-                        val turnOff = mapping.turnOffValue?.let { ", off=$it" } ?: ""
-                        val reset = mapping.resetValue?.let { ", reset=$it" } ?: ""
-                        val errEntity = mapping.genericErrorEntityId?.let { ", err=$it" } ?: ""
-                        val errValue = mapping.genericErrorTriggerValue?.let { ", errValue=$it" } ?: ""
-                        "Generic: ${mapping.progressEntityId} (${mapping.genericDisplayMode.name}, max=${mapping.maxValue}$turnOff$reset$errEntity$errValue)"
-                    }
-                }
+                text = mapping.toDisplayLabel()
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
 
@@ -657,28 +643,20 @@ class MainActivity : ComponentActivity() {
                     return@setPositiveButton
                 }
 
-                val maxValue = maxInput.text?.toString()?.toDoubleOrNull() ?: 100.0
-                val remainingEntityId = remainingInput.text?.toString().orEmpty().trim().ifBlank { null }
-                val interruptedEntityId = interruptedInput.text?.toString().orEmpty().trim().ifBlank { null }
-                val turnOffValue = turnOffInput.text?.toString().orEmpty().trim().ifBlank { null }
-                val resetValue = resetInput.text?.toString().orEmpty().trim().ifBlank { null }
-                val genericErrorEntityId = genericErrorEntityInput.text?.toString().orEmpty().trim().ifBlank { null }
-                val genericErrorTriggerValue = genericErrorTriggerInput.text?.toString().orEmpty().trim().ifBlank { null }
-                val useCase = useCaseOptions[useCaseInput.selectedItemPosition].useCase
-                val genericMode = genericModeOptions[genericModeInput.selectedItemPosition].mode
-
-                mappings[index] = SensorMapping(
-                    useCase = useCase,
+                val config = MappingConfig(
+                    useCase = useCaseOptions[useCaseInput.selectedItemPosition].useCase,
                     progressEntityId = progressEntityId,
-                    maxValue = maxValue,
-                    remainingTimeEntityId = if (useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) remainingEntityId else null,
-                    interruptedEntityId = if (useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) interruptedEntityId else null,
-                    genericDisplayMode = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericMode else GenericDisplayMode.NUMBER,
-                    turnOffValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) turnOffValue else null,
-                    resetValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) resetValue else null,
-                    genericErrorEntityId = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericErrorEntityId else null,
-                    genericErrorTriggerValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericErrorTriggerValue else null
+                    maxValue = maxInput.text?.toString()?.toDoubleOrNull() ?: 100.0,
+                    remainingEntityId = remainingInput.text?.toString().orEmpty().trim().ifBlank { null },
+                    interruptedEntityId = interruptedInput.text?.toString().orEmpty().trim().ifBlank { null },
+                    genericMode = genericModeOptions[genericModeInput.selectedItemPosition].mode,
+                    turnOffValue = turnOffInput.text?.toString().orEmpty().trim().ifBlank { null },
+                    resetValue = resetInput.text?.toString().orEmpty().trim().ifBlank { null },
+                    genericErrorEntityId = genericErrorEntityInput.text?.toString().orEmpty().trim().ifBlank { null },
+                    genericErrorTriggerValue = genericErrorTriggerInput.text?.toString().orEmpty().trim().ifBlank { null }
                 )
+
+                mappings[index] = toSensorMapping(config)
 
                 store.saveMappings(mappings)
                 renderMappings()
@@ -687,6 +665,49 @@ class MainActivity : ComponentActivity() {
                 toast(getString(R.string.toast_mapping_updated))
             }
             .show()
+    }
+
+    private fun toSensorMapping(config: MappingConfig): SensorMapping {
+        return SensorMapping(
+            useCase = config.useCase,
+            progressEntityId = config.progressEntityId,
+            maxValue = config.maxValue,
+            remainingTimeEntityId = if (config.useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) config.remainingEntityId else null,
+            interruptedEntityId = if (config.useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) config.interruptedEntityId else null,
+            genericDisplayMode = if (config.useCase == UseCaseType.TRACK_GENERIC_SENSOR) config.genericMode else GenericDisplayMode.NUMBER,
+            turnOffValue = if (config.useCase == UseCaseType.TRACK_GENERIC_SENSOR) config.turnOffValue else null,
+            resetValue = if (config.useCase == UseCaseType.TRACK_GENERIC_SENSOR) config.resetValue else null,
+            genericErrorEntityId = if (config.useCase == UseCaseType.TRACK_GENERIC_SENSOR) config.genericErrorEntityId else null,
+            genericErrorTriggerValue = if (config.useCase == UseCaseType.TRACK_GENERIC_SENSOR) config.genericErrorTriggerValue else null
+        )
+    }
+
+    private fun resetMappingFormInputs() {
+        progressEntityIdInput.setText("")
+        remainingTimeEntityIdInput.setText("")
+        interruptedEntityIdInput.setText("")
+        turnOffValueInput.setText("")
+        resetValueInput.setText("")
+        genericErrorEntityIdInput.setText("")
+        genericErrorTriggerValueInput.setText("")
+    }
+
+    private fun SensorMapping.toDisplayLabel(): String {
+        return when (useCase) {
+            UseCaseType.TRACK_3D_PRINTER_PROGRESS -> {
+                val remaining = remainingTimeEntityId?.let { ", time=$it" } ?: ""
+                val interrupted = interruptedEntityId?.let { ", interrupted=$it" } ?: ""
+                "Printer: $progressEntityId (max=$maxValue$remaining$interrupted)"
+            }
+
+            UseCaseType.TRACK_GENERIC_SENSOR -> {
+                val turnOff = turnOffValue?.let { ", off=$it" } ?: ""
+                val reset = resetValue?.let { ", reset=$it" } ?: ""
+                val errEntity = genericErrorEntityId?.let { ", err=$it" } ?: ""
+                val errValue = genericErrorTriggerValue?.let { ", errValue=$it" } ?: ""
+                "Generic: $progressEntityId (${genericDisplayMode.name}, max=$maxValue$turnOff$reset$errEntity$errValue)"
+            }
+        }
     }
 
     private fun notifyMappingsUpdated() {
