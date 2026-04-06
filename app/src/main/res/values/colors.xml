@@ -1,8 +1,11 @@
 <resources>
-    <color name="ha_blue">#03A9F4</color>
-    <color name="ha_blue_dark">#0288D1</color>
+    <color name="ha_blue">#0E7A73</color>
+    <color name="ha_blue_dark">#0B5E58</color>
     <color name="on_ha_blue">#FFFFFF</color>
-    <color name="surface">#F5F8FB</color>
-    <color name="on_surface">#101820</color>
-    <color name="divider">#2B7EA7C4</color>
+    <color name="surface">#EDF3F4</color>
+    <color name="card_surface">#FFFFFF</color>
+    <color name="card_stroke">#CADADD</color>
+    <color name="on_surface">#102027</color>
+    <color name="on_surface_muted">#48606B</color>
+    <color name="divider">#1D5F7B87</color>
 </resources>

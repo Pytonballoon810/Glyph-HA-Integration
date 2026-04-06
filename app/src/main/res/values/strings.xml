@@ -2,6 +2,11 @@
     <string name="app_name">Glyph HA Integration</string>
     <string name="hero_title">Glyph Matrix Control</string>
     <string name="hero_subtitle">Link Home Assistant sensors and stream live progress to your Nothing phone.</string>
+    <string name="iot_hero_tagline">Realtime IoT Telemetry</string>
+    <string name="section_connection_title">Connection Gateway</string>
+    <string name="section_connection_subtitle">Bind your Home Assistant endpoint and auth token.</string>
+    <string name="section_tracker_title">Tracker Pipeline</string>
+    <string name="section_tracker_subtitle">Configure printer or generic sensor flows for Glyph rendering.</string>
     <string name="notification_channel_name">Glyph Background Sync</string>
     <string name="notification_title">Glyph sync running</string>
     <string name="notification_waiting_config">Waiting for Home Assistant setup</string>

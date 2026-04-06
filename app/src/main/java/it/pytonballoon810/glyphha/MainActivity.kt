@@ -109,6 +109,13 @@ class MainActivity : ComponentActivity() {
         updateAutomaticSync()
     }
 
+    override fun onPause() {
+        if (::debugTabContent.isInitialized && debugTabContent.visibility == View.VISIBLE) {
+            clearDebugRenderDisplay()
+        }
+        super.onPause()
+    }
+
     override fun onDestroy() {
         stopCurrentRenderPolling()
         glyphController.stop()
@@ -453,17 +460,26 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showTab(position: Int) {
+        val wasDebugVisible = debugTabContent.visibility == View.VISIBLE
         val showMain = position == 0
         mainTabContent.visibility = if (showMain) View.VISIBLE else View.GONE
         debugTabContent.visibility = if (showMain) View.GONE else View.VISIBLE
 
         if (showMain) {
             stopCurrentRenderPolling()
+            if (wasDebugVisible) {
+                clearDebugRenderDisplay()
+            }
             updateAutomaticSync()
         } else {
             stopPolling(getString(R.string.status_debug_mode_active))
             startCurrentRenderPolling()
         }
+    }
+
+    private fun clearDebugRenderDisplay() {
+        glyphController.start()
+        glyphController.clearAppDisplay()
     }
 
     private fun startCurrentRenderPolling() {
