@@ -9,6 +9,7 @@
     <string name="notification_syncing">Syncing %1$s</string>
     <string name="notification_sync_error">Sync error: %1$s</string>
     <string name="completion_icon_title">Completion icon</string>
+    <string name="error_icon_title">Error icon</string>
     <string name="save_completion_icon">Save completion icon settings</string>
     <string name="clear_custom_icon">Clear custom icon</string>
     <string name="icon_printer">3D Printer</string>
@@ -39,6 +40,8 @@
     <string name="hint_interrupted_entity_id">Interrupted binary sensor (optional, example: binary_sensor.printer_interrupted)</string>
     <string name="hint_turn_off_value">Turn-off value (optional, example: off, 0, idle)</string>
     <string name="hint_reset_value">Reset value (optional, example: on, 1, printing)</string>
+    <string name="hint_generic_error_entity_id">Error sensor entity ID (optional, example: sensor.printer_error_state)</string>
+    <string name="hint_generic_error_trigger_value">Error trigger value (example: error)</string>
     <string name="usecase_printer_tracking">Track 3D printer progress</string>
     <string name="usecase_generic_tracking">Track generic sensor</string>
     <string name="generic_mode_title">Generic display mode</string>

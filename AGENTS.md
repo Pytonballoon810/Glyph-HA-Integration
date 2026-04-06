@@ -50,6 +50,10 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
   - secondary duration-like text is normalized (e.g. `0h 1m` -> `1m`)
   - overflow text uses slow billboard-style scrolling only when overflow exceeds a small threshold
   - completion blink mode and reset rules handled in service logic
+- Generic tracking behavior:
+  - supports progress or number/text render mode
+  - supports configurable turn-off and reset values to control runtime tracking enablement
+  - supports optional error sensor + trigger value that renders a selected error icon when matched
 - Debug tab behavior:
   - current matrix payload panel shows only latest rendered data (no history)
 

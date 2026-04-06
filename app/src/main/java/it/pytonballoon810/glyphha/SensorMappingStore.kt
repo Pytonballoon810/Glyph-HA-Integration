@@ -41,7 +41,9 @@ class SensorMappingStore(context: Context) {
                         it.name == item.optString("genericDisplayMode", GenericDisplayMode.NUMBER.name)
                     } ?: GenericDisplayMode.NUMBER,
                     turnOffValue = item.optString("turnOffValue", "").ifBlank { null },
-                    resetValue = item.optString("resetValue", "").ifBlank { null }
+                    resetValue = item.optString("resetValue", "").ifBlank { null },
+                    genericErrorEntityId = item.optString("genericErrorEntityId", "").ifBlank { null },
+                    genericErrorTriggerValue = item.optString("genericErrorTriggerValue", "").ifBlank { null }
                 )
                 continue
             }
@@ -59,7 +61,9 @@ class SensorMappingStore(context: Context) {
                     it.name == item.optString("mode", "")
                 } ?: GenericDisplayMode.NUMBER,
                 turnOffValue = null,
-                resetValue = null
+                resetValue = null,
+                genericErrorEntityId = null,
+                genericErrorTriggerValue = null
             )
         }
         return output
@@ -77,6 +81,8 @@ class SensorMappingStore(context: Context) {
                 .put("genericDisplayMode", it.genericDisplayMode.name)
                 .put("turnOffValue", it.turnOffValue ?: "")
                 .put("resetValue", it.resetValue ?: "")
+                .put("genericErrorEntityId", it.genericErrorEntityId ?: "")
+                .put("genericErrorTriggerValue", it.genericErrorTriggerValue ?: "")
             array.put(obj)
         }
         prefs.edit().putString(KEY_MAPPINGS, array.toString()).apply()
@@ -90,6 +96,16 @@ class SensorMappingStore(context: Context) {
         val raw = prefs.getString(KEY_COMPLETION_ICON_TYPE, CompletionIconType.PRINTER.name)
             ?: CompletionIconType.PRINTER.name
         return CompletionIconType.entries.firstOrNull { it.name == raw } ?: CompletionIconType.PRINTER
+    }
+
+    fun saveErrorIconType(type: CompletionIconType) {
+        prefs.edit().putString(KEY_ERROR_ICON_TYPE, type.name).apply()
+    }
+
+    fun loadErrorIconType(): CompletionIconType {
+        val raw = prefs.getString(KEY_ERROR_ICON_TYPE, CompletionIconType.CHECK.name)
+            ?: CompletionIconType.CHECK.name
+        return CompletionIconType.entries.firstOrNull { it.name == raw } ?: CompletionIconType.CHECK
     }
 
     fun saveCustomIconData(data: CustomIconData) {
@@ -123,6 +139,7 @@ class SensorMappingStore(context: Context) {
         private const val KEY_TOKEN = "token"
         private const val KEY_MAPPINGS = "mappings"
         private const val KEY_COMPLETION_ICON_TYPE = "completion_icon_type"
+        private const val KEY_ERROR_ICON_TYPE = "error_icon_type"
         private const val KEY_CUSTOM_ICON_DATA = "custom_icon_data"
     }
 }

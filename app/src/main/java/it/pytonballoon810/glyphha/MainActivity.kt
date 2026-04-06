@@ -32,6 +32,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var interruptedEntityIdInput: TextInputEditText
     private lateinit var turnOffValueInput: TextInputEditText
     private lateinit var resetValueInput: TextInputEditText
+    private lateinit var genericErrorEntityIdInput: TextInputEditText
+    private lateinit var genericErrorTriggerValueInput: TextInputEditText
     private lateinit var useCaseSpinner: Spinner
     private lateinit var genericModeSpinner: Spinner
     private lateinit var genericModeTitle: TextView
@@ -40,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var mainTabContent: LinearLayout
     private lateinit var debugTabContent: LinearLayout
     private lateinit var completionIconSpinner: Spinner
+    private lateinit var errorIconSpinner: Spinner
     private lateinit var debugIconSpinner: Spinner
     private lateinit var customEditorTitle: TextView
     private lateinit var customIconEditor: PixelEditorView
@@ -138,6 +141,8 @@ class MainActivity : ComponentActivity() {
         interruptedEntityIdInput = findViewById(R.id.interruptedEntityIdInput)
         turnOffValueInput = findViewById(R.id.turnOffValueInput)
         resetValueInput = findViewById(R.id.resetValueInput)
+        genericErrorEntityIdInput = findViewById(R.id.genericErrorEntityIdInput)
+        genericErrorTriggerValueInput = findViewById(R.id.genericErrorTriggerValueInput)
         useCaseSpinner = findViewById(R.id.useCaseSpinner)
         genericModeSpinner = findViewById(R.id.genericModeSpinner)
         genericModeTitle = findViewById(R.id.genericModeTitle)
@@ -146,6 +151,7 @@ class MainActivity : ComponentActivity() {
         mainTabContent = findViewById(R.id.mainTabContent)
         debugTabContent = findViewById(R.id.debugTabContent)
         completionIconSpinner = findViewById(R.id.completionIconSpinner)
+        errorIconSpinner = findViewById(R.id.errorIconSpinner)
         debugIconSpinner = findViewById(R.id.debugIconSpinner)
         customEditorTitle = findViewById(R.id.customEditorTitle)
         customIconEditor = findViewById(R.id.customIconEditor)
@@ -214,6 +220,11 @@ class MainActivity : ComponentActivity() {
             android.R.layout.simple_spinner_dropdown_item,
             iconOptions.map { it.label }
         )
+        errorIconSpinner.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            iconOptions.map { it.label }
+        )
         debugIconSpinner.adapter = ArrayAdapter(
             this,
             android.R.layout.simple_spinner_dropdown_item,
@@ -222,7 +233,16 @@ class MainActivity : ComponentActivity() {
 
         completionIconSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                updateCustomEditorVisibility(iconOptions[position].type)
+                updateCustomEditorVisibility()
+            }
+
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {
+            }
+        }
+
+        errorIconSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                updateCustomEditorVisibility()
             }
 
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {
@@ -256,13 +276,16 @@ class MainActivity : ComponentActivity() {
         tokenInput.setText(store.loadToken())
 
         val savedType = store.loadCompletionIconType()
+        val savedErrorType = store.loadErrorIconType()
         val savedPixels = store.loadCustomIconData()
         savedPixels?.let { customIconEditor.setActivePixels(it.activePixels) }
 
         val selectedIndex = iconOptions.indexOfFirst { it.type == savedType }.takeIf { it >= 0 } ?: 0
+        val selectedErrorIndex = iconOptions.indexOfFirst { it.type == savedErrorType }.takeIf { it >= 0 } ?: 0
         completionIconSpinner.setSelection(selectedIndex, false)
+        errorIconSpinner.setSelection(selectedErrorIndex, false)
         debugIconSpinner.setSelection(selectedIndex, false)
-        updateCustomEditorVisibility(iconOptions[selectedIndex].type)
+        updateCustomEditorVisibility()
 
         mappings.clear()
         mappings.addAll(store.loadMappings())
@@ -295,6 +318,8 @@ class MainActivity : ComponentActivity() {
             val interruptedEntityId = interruptedEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null }
             val turnOffValue = turnOffValueInput.text?.toString().orEmpty().trim().ifBlank { null }
             val resetValue = resetValueInput.text?.toString().orEmpty().trim().ifBlank { null }
+            val genericErrorEntityId = genericErrorEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null }
+            val genericErrorTriggerValue = genericErrorTriggerValueInput.text?.toString().orEmpty().trim().ifBlank { null }
             val useCase = useCaseOptions[useCaseSpinner.selectedItemPosition].useCase
             val genericMode = genericModeOptions[genericModeSpinner.selectedItemPosition].mode
 
@@ -306,7 +331,9 @@ class MainActivity : ComponentActivity() {
                 interruptedEntityId = if (useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) interruptedEntityId else null,
                 genericDisplayMode = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericMode else GenericDisplayMode.NUMBER,
                 turnOffValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) turnOffValue else null,
-                resetValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) resetValue else null
+                resetValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) resetValue else null,
+                genericErrorEntityId = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericErrorEntityId else null,
+                genericErrorTriggerValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericErrorTriggerValue else null
             )
 
             store.saveMappings(mappings)
@@ -316,14 +343,19 @@ class MainActivity : ComponentActivity() {
             interruptedEntityIdInput.setText("")
             turnOffValueInput.setText("")
             resetValueInput.setText("")
+            genericErrorEntityIdInput.setText("")
+            genericErrorTriggerValueInput.setText("")
+            notifyMappingsUpdated()
             updateAutomaticSync()
         }
 
         findViewById<MaterialButton>(R.id.saveCompletionIconButton).setOnClickListener {
             val selectedType = iconOptions[completionIconSpinner.selectedItemPosition].type
+            val selectedErrorType = iconOptions[errorIconSpinner.selectedItemPosition].type
             store.saveCompletionIconType(selectedType)
+            store.saveErrorIconType(selectedErrorType)
 
-            if (selectedType == CompletionIconType.CUSTOM) {
+            if (selectedType == CompletionIconType.CUSTOM || selectedErrorType == CompletionIconType.CUSTOM) {
                 store.saveCustomIconData(customIconEditor.getCustomIconData())
             }
 
@@ -401,6 +433,8 @@ class MainActivity : ComponentActivity() {
         genericControlsTitle.visibility = if (genericVisible) View.VISIBLE else View.GONE
         setViewAndParentVisibility(turnOffValueInput, genericVisible)
         setViewAndParentVisibility(resetValueInput, genericVisible)
+        setViewAndParentVisibility(genericErrorEntityIdInput, genericVisible)
+        setViewAndParentVisibility(genericErrorTriggerValueInput, genericVisible)
     }
 
     private fun setViewAndParentVisibility(view: View, visible: Boolean) {
@@ -408,8 +442,10 @@ class MainActivity : ComponentActivity() {
         target.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
-    private fun updateCustomEditorVisibility(type: CompletionIconType) {
-        val isCustom = type == CompletionIconType.CUSTOM
+    private fun updateCustomEditorVisibility() {
+        val completionType = iconOptions.getOrNull(completionIconSpinner.selectedItemPosition)?.type
+        val errorType = iconOptions.getOrNull(errorIconSpinner.selectedItemPosition)?.type
+        val isCustom = completionType == CompletionIconType.CUSTOM || errorType == CompletionIconType.CUSTOM
         customEditorTitle.visibility = if (isCustom) View.VISIBLE else View.GONE
         customIconEditor.visibility = if (isCustom) View.VISIBLE else View.GONE
         findViewById<View>(R.id.clearCustomIconButton).visibility = if (isCustom) View.VISIBLE else View.GONE
@@ -478,7 +514,9 @@ class MainActivity : ComponentActivity() {
                     UseCaseType.TRACK_GENERIC_SENSOR -> {
                         val turnOff = mapping.turnOffValue?.let { ", off=$it" } ?: ""
                         val reset = mapping.resetValue?.let { ", reset=$it" } ?: ""
-                        "Generic: ${mapping.progressEntityId} (${mapping.genericDisplayMode.name}, max=${mapping.maxValue}$turnOff$reset)"
+                        val errEntity = mapping.genericErrorEntityId?.let { ", err=$it" } ?: ""
+                        val errValue = mapping.genericErrorTriggerValue?.let { ", errValue=$it" } ?: ""
+                        "Generic: ${mapping.progressEntityId} (${mapping.genericDisplayMode.name}, max=${mapping.maxValue}$turnOff$reset$errEntity$errValue)"
                     }
                 }
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -497,6 +535,7 @@ class MainActivity : ComponentActivity() {
                     mappings.removeAt(index)
                     store.saveMappings(mappings)
                     renderMappings()
+                    notifyMappingsUpdated()
                     updateAutomaticSync()
                 }
             }
@@ -569,6 +608,16 @@ class MainActivity : ComponentActivity() {
             setText(mapping.resetValue.orEmpty())
         }
 
+        val genericErrorEntityInput = EditText(this).apply {
+            hint = getString(R.string.hint_generic_error_entity_id)
+            setText(mapping.genericErrorEntityId.orEmpty())
+        }
+
+        val genericErrorTriggerInput = EditText(this).apply {
+            hint = getString(R.string.hint_generic_error_trigger_value)
+            setText(mapping.genericErrorTriggerValue.orEmpty())
+        }
+
         container.addView(progressInput)
         container.addView(useCaseInput)
         container.addView(genericModeInput)
@@ -577,6 +626,8 @@ class MainActivity : ComponentActivity() {
         container.addView(interruptedInput)
         container.addView(turnOffInput)
         container.addView(resetInput)
+        container.addView(genericErrorEntityInput)
+        container.addView(genericErrorTriggerInput)
 
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.edit_mapping))
@@ -594,6 +645,8 @@ class MainActivity : ComponentActivity() {
                 val interruptedEntityId = interruptedInput.text?.toString().orEmpty().trim().ifBlank { null }
                 val turnOffValue = turnOffInput.text?.toString().orEmpty().trim().ifBlank { null }
                 val resetValue = resetInput.text?.toString().orEmpty().trim().ifBlank { null }
+                val genericErrorEntityId = genericErrorEntityInput.text?.toString().orEmpty().trim().ifBlank { null }
+                val genericErrorTriggerValue = genericErrorTriggerInput.text?.toString().orEmpty().trim().ifBlank { null }
                 val useCase = useCaseOptions[useCaseInput.selectedItemPosition].useCase
                 val genericMode = genericModeOptions[genericModeInput.selectedItemPosition].mode
 
@@ -605,15 +658,25 @@ class MainActivity : ComponentActivity() {
                     interruptedEntityId = if (useCase == UseCaseType.TRACK_3D_PRINTER_PROGRESS) interruptedEntityId else null,
                     genericDisplayMode = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericMode else GenericDisplayMode.NUMBER,
                     turnOffValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) turnOffValue else null,
-                    resetValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) resetValue else null
+                    resetValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) resetValue else null,
+                    genericErrorEntityId = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericErrorEntityId else null,
+                    genericErrorTriggerValue = if (useCase == UseCaseType.TRACK_GENERIC_SENSOR) genericErrorTriggerValue else null
                 )
 
                 store.saveMappings(mappings)
                 renderMappings()
+                notifyMappingsUpdated()
                 updateAutomaticSync()
                 toast(getString(R.string.toast_mapping_updated))
             }
             .show()
+    }
+
+    private fun notifyMappingsUpdated() {
+        val intent = Intent(this, GlyphSyncForegroundService::class.java).apply {
+            action = GlyphSyncForegroundService.ACTION_MAPPINGS_UPDATED
+        }
+        ContextCompat.startForegroundService(this, intent)
     }
 
     private fun toast(text: String) {

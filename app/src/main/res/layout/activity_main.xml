@@ -192,6 +192,32 @@
                 android:layout_marginTop="8dp">
 
                 <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/genericErrorEntityIdInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/hint_generic_error_entity_id"
+                    android:inputType="text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/genericErrorTriggerValueInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/hint_generic_error_trigger_value"
+                    android:inputType="text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp">
+
+                <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/interruptedEntityIdInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -235,6 +261,20 @@
 
             <Spinner
                 android:id="@+id/completionIconSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" />
+
+            <TextView
+                android:id="@+id/errorIconTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/error_icon_title"
+                android:textStyle="bold" />
+
+            <Spinner
+                android:id="@+id/errorIconSpinner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp" />

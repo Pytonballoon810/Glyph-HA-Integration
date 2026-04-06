@@ -64,6 +64,9 @@ class GlyphSyncForegroundService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
+            ACTION_MAPPINGS_UPDATED -> {
+                handleMappingsUpdated()
+            }
             ACTION_START, null -> {
                 ensurePolling()
             }
@@ -107,6 +110,7 @@ class GlyphSyncForegroundService : Service() {
                 syncStateMaps(mappings)
                 val client = HomeAssistantClient(baseUrl, token)
                 val completionIconType = store.loadCompletionIconType()
+                val errorIconType = store.loadErrorIconType()
                 val customIconData = store.loadCustomIconData()
 
                 for (mapping in mappings) {
@@ -125,7 +129,9 @@ class GlyphSyncForegroundService : Service() {
 
                             UseCaseType.TRACK_GENERIC_SENSOR -> handleGenericUseCase(
                                 client = client,
-                                mapping = mapping
+                                mapping = mapping,
+                                errorIconType = errorIconType,
+                                customIconData = customIconData
                             )
                         }
 
@@ -177,10 +183,32 @@ class GlyphSyncForegroundService : Service() {
 
     private suspend fun handleGenericUseCase(
         client: HomeAssistantClient,
-        mapping: SensorMapping
+        mapping: SensorMapping,
+        errorIconType: CompletionIconType,
+        customIconData: CustomIconData?
     ): Long {
         val sensorState = withContext(Dispatchers.IO) {
             client.fetchState(mapping.progressEntityId)
+        }
+
+        val shouldShowError = mapping.genericErrorEntityId?.let { errorEntityId ->
+            val errorState = withContext(Dispatchers.IO) {
+                client.fetchState(errorEntityId)
+            }
+            matchesConfiguredValue(
+                rawState = errorState.rawState.trim(),
+                numericState = errorState.value,
+                configuredValue = mapping.genericErrorTriggerValue
+            )
+        } ?: false
+
+        if (shouldShowError) {
+            glyphController.renderCompletionBlink(
+                showIcon = true,
+                iconType = errorIconType,
+                customIconData = customIconData
+            )
+            return POLL_INTERVAL_MS
         }
 
         val runtime = genericStates.getOrPut(mapping.progressEntityId) { GenericState(enabled = true) }
@@ -236,6 +264,21 @@ class GlyphSyncForegroundService : Service() {
         pollingJob = null
         updateNotification(status)
         glyphController.stop()
+    }
+
+    private fun handleMappingsUpdated() {
+        val mappings = store.loadMappings()
+        glyphController.start()
+        syncStateMaps(mappings)
+        glyphController.clearAppDisplay()
+
+        if (mappings.isEmpty()) {
+            updateNotification(getString(R.string.notification_waiting_sensor))
+        }
+
+        pollingJob?.cancel()
+        pollingJob = null
+        ensurePolling()
     }
 
     private fun handleInterruptedMapping(mapping: SensorMapping): Long {
@@ -455,6 +498,7 @@ class GlyphSyncForegroundService : Service() {
     companion object {
         const val ACTION_START = "it.pytonballoon810.glyphha.action.START"
         const val ACTION_STOP = "it.pytonballoon810.glyphha.action.STOP"
+        const val ACTION_MAPPINGS_UPDATED = "it.pytonballoon810.glyphha.action.MAPPINGS_UPDATED"
 
         private const val CHANNEL_ID = "glyph_sync_channel"
         private const val NOTIFICATION_ID = 4242

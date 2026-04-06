@@ -18,7 +18,9 @@ data class SensorMapping(
     val interruptedEntityId: String? = null,
     val genericDisplayMode: GenericDisplayMode = GenericDisplayMode.NUMBER,
     val turnOffValue: String? = null,
-    val resetValue: String? = null
+    val resetValue: String? = null,
+    val genericErrorEntityId: String? = null,
+    val genericErrorTriggerValue: String? = null
 )
 
 data class SensorState(
