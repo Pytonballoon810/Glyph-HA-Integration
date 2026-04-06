@@ -44,6 +44,22 @@
 6. For progress mode, optionally set a secondary text sensor (for remaining time, status, etc.).
 7. Keep the app running; sync is managed by the foreground service.
 
+## Manual ADB Install Script
+
+If you want to install manually from terminal, use the root script `install-adb.bat`.
+
+1. Install using existing debug APK:
+  - `install-adb.bat`
+2. Build debug APK first, then install:
+  - `install-adb.bat --build`
+
+What the script does:
+
+- Verifies `adb` is available in your `PATH`
+- Verifies a connected device is detected
+- Installs `app/build/outputs/apk/debug/app-debug.apk` via `adb install -r`
+- Launches the app after install
+
 ## Home Assistant Notes
 
 - Create a long-lived token in your Home Assistant profile.
