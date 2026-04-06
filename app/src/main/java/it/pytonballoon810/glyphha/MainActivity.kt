@@ -18,18 +18,19 @@ import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.nothing.ketchum.Common
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputEditText
+import com.nothing.ketchum.Common
 
 class MainActivity : ComponentActivity() {
     private lateinit var baseUrlInput: TextInputEditText
     private lateinit var tokenInput: TextInputEditText
-    private lateinit var entityIdInput: TextInputEditText
+    private lateinit var progressEntityIdInput: TextInputEditText
     private lateinit var maxValueInput: TextInputEditText
-    private lateinit var secondaryTextEntityIdInput: TextInputEditText
-    private lateinit var modeSpinner: Spinner
+    private lateinit var remainingTimeEntityIdInput: TextInputEditText
+    private lateinit var interruptedEntityIdInput: TextInputEditText
+    private lateinit var useCaseSpinner: Spinner
     private lateinit var appTabLayout: TabLayout
     private lateinit var mainTabContent: LinearLayout
     private lateinit var debugTabContent: LinearLayout
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var store: SensorMappingStore
     private lateinit var iconOptions: List<IconOption>
+    private lateinit var useCaseOptions: List<UseCaseOption>
     private var deviceMatrixSize: Int = 13
 
     private val mappings = mutableListOf<SensorMapping>()
@@ -65,6 +67,11 @@ class MainActivity : ComponentActivity() {
         val label: String
     )
 
+    private data class UseCaseOption(
+        val useCase: UseCaseType,
+        val label: String
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -73,7 +80,7 @@ class MainActivity : ComponentActivity() {
         glyphController = GlyphController(this)
 
         bindViews()
-        setupModeSpinner()
+        setupUseCaseSpinner()
         setupCompletionIconUi()
         setupTabLayout()
         loadState()
@@ -93,7 +100,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun bindViews() {
-        val rootScroll = findViewById<android.view.View>(R.id.rootScroll)
+        val rootScroll = findViewById<View>(R.id.rootScroll)
         val initialLeft = rootScroll.paddingLeft
         val initialTop = rootScroll.paddingTop
         val initialRight = rootScroll.paddingRight
@@ -112,10 +119,11 @@ class MainActivity : ComponentActivity() {
 
         baseUrlInput = findViewById(R.id.baseUrlInput)
         tokenInput = findViewById(R.id.tokenInput)
-        entityIdInput = findViewById(R.id.entityIdInput)
+        progressEntityIdInput = findViewById(R.id.entityIdInput)
         maxValueInput = findViewById(R.id.maxValueInput)
-        secondaryTextEntityIdInput = findViewById(R.id.secondaryTextEntityIdInput)
-        modeSpinner = findViewById(R.id.modeSpinner)
+        remainingTimeEntityIdInput = findViewById(R.id.secondaryTextEntityIdInput)
+        interruptedEntityIdInput = findViewById(R.id.interruptedEntityIdInput)
+        useCaseSpinner = findViewById(R.id.useCaseSpinner)
         appTabLayout = findViewById(R.id.appTabLayout)
         mainTabContent = findViewById(R.id.mainTabContent)
         debugTabContent = findViewById(R.id.debugTabContent)
@@ -134,9 +142,19 @@ class MainActivity : ComponentActivity() {
         customIconEditor.setMatrixSize(deviceMatrixSize)
     }
 
-    private fun setupModeSpinner() {
-        val labels = listOf(getString(R.string.mode_progress), getString(R.string.mode_raw))
-        modeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+    private fun setupUseCaseSpinner() {
+        useCaseOptions = listOf(
+            UseCaseOption(
+                useCase = UseCaseType.TRACK_3D_PRINTER_PROGRESS,
+                label = getString(R.string.usecase_printer_tracking)
+            )
+        )
+
+        useCaseSpinner.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            useCaseOptions.map { it.label }
+        )
     }
 
     private fun setupCompletionIconUi() {
@@ -222,30 +240,30 @@ class MainActivity : ComponentActivity() {
         }
 
         findViewById<MaterialButton>(R.id.addSensorButton).setOnClickListener {
-            val entityId = entityIdInput.text?.toString().orEmpty().trim()
-            if (entityId.isBlank()) {
+            val progressEntityId = progressEntityIdInput.text?.toString().orEmpty().trim()
+            if (progressEntityId.isBlank()) {
                 toast(getString(R.string.toast_entity_required))
                 return@setOnClickListener
             }
 
-            val mode = if (modeSpinner.selectedItemPosition == 0) {
-                DisplayMode.PROGRESS
-            } else {
-                DisplayMode.RAW_NUMBER
-            }
-
             val maxValue = maxValueInput.text?.toString()?.toDoubleOrNull() ?: 100.0
-            val secondaryEntity = secondaryTextEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null }
+            val remainingEntityId = remainingTimeEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null }
+            val interruptedEntityId = interruptedEntityIdInput.text?.toString().orEmpty().trim().ifBlank { null }
+            val useCase = useCaseOptions[useCaseSpinner.selectedItemPosition].useCase
+
             mappings += SensorMapping(
-                entityId = entityId,
-                mode = mode,
+                useCase = useCase,
+                progressEntityId = progressEntityId,
                 maxValue = maxValue,
-                secondaryTextEntityId = secondaryEntity
+                remainingTimeEntityId = remainingEntityId,
+                interruptedEntityId = interruptedEntityId
             )
+
             store.saveMappings(mappings)
             renderMappings()
-            entityIdInput.setText("")
-            secondaryTextEntityIdInput.setText("")
+            progressEntityIdInput.setText("")
+            remainingTimeEntityIdInput.setText("")
+            interruptedEntityIdInput.setText("")
             updateAutomaticSync()
         }
 
@@ -380,8 +398,9 @@ class MainActivity : ComponentActivity() {
             }
 
             val label = TextView(this).apply {
-                val secondary = mapping.secondaryTextEntityId?.let { ", sub=$it" } ?: ""
-                text = "${mapping.entityId} (${mapping.mode.name}, max=${mapping.maxValue}$secondary)"
+                val remaining = mapping.remainingTimeEntityId?.let { ", time=$it" } ?: ""
+                val interrupted = mapping.interruptedEntityId?.let { ", interrupted=$it" } ?: ""
+                text = "${mapping.progressEntityId} (max=${mapping.maxValue}$remaining$interrupted)"
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
 
@@ -415,15 +434,21 @@ class MainActivity : ComponentActivity() {
             setPadding(32, 20, 32, 0)
         }
 
-        val entityInput = EditText(this).apply {
+        val progressInput = EditText(this).apply {
             hint = getString(R.string.hint_entity_id)
-            setText(mapping.entityId)
+            setText(mapping.progressEntityId)
         }
 
-        val modeInput = Spinner(this).apply {
-            val labels = listOf(getString(R.string.mode_progress), getString(R.string.mode_raw))
-            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, labels)
-            setSelection(if (mapping.mode == DisplayMode.PROGRESS) 0 else 1)
+        val useCaseInput = Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                useCaseOptions.map { it.label }
+            )
+            val selectedIndex = useCaseOptions.indexOfFirst { it.useCase == mapping.useCase }
+                .takeIf { it >= 0 }
+                ?: 0
+            setSelection(selectedIndex)
         }
 
         val maxInput = EditText(this).apply {
@@ -432,36 +457,44 @@ class MainActivity : ComponentActivity() {
             setText(mapping.maxValue.toString())
         }
 
-        val secondaryInput = EditText(this).apply {
+        val remainingInput = EditText(this).apply {
             hint = getString(R.string.hint_secondary_text_entity_id)
-            setText(mapping.secondaryTextEntityId.orEmpty())
+            setText(mapping.remainingTimeEntityId.orEmpty())
         }
 
-        container.addView(entityInput)
-        container.addView(modeInput)
+        val interruptedInput = EditText(this).apply {
+            hint = getString(R.string.hint_interrupted_entity_id)
+            setText(mapping.interruptedEntityId.orEmpty())
+        }
+
+        container.addView(progressInput)
+        container.addView(useCaseInput)
         container.addView(maxInput)
-        container.addView(secondaryInput)
+        container.addView(remainingInput)
+        container.addView(interruptedInput)
 
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.edit_mapping))
             .setView(container)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(getString(R.string.save_mapping_changes)) { _, _ ->
-                val entityId = entityInput.text?.toString().orEmpty().trim()
-                if (entityId.isBlank()) {
+                val progressEntityId = progressInput.text?.toString().orEmpty().trim()
+                if (progressEntityId.isBlank()) {
                     toast(getString(R.string.toast_entity_required))
                     return@setPositiveButton
                 }
 
                 val maxValue = maxInput.text?.toString()?.toDoubleOrNull() ?: 100.0
-                val mode = if (modeInput.selectedItemPosition == 0) DisplayMode.PROGRESS else DisplayMode.RAW_NUMBER
-                val secondaryTextEntity = secondaryInput.text?.toString().orEmpty().trim().ifBlank { null }
+                val remainingEntityId = remainingInput.text?.toString().orEmpty().trim().ifBlank { null }
+                val interruptedEntityId = interruptedInput.text?.toString().orEmpty().trim().ifBlank { null }
+                val useCase = useCaseOptions[useCaseInput.selectedItemPosition].useCase
 
                 mappings[index] = SensorMapping(
-                    entityId = entityId,
-                    mode = mode,
+                    useCase = useCase,
+                    progressEntityId = progressEntityId,
                     maxValue = maxValue,
-                    secondaryTextEntityId = secondaryTextEntity
+                    remainingTimeEntityId = remainingEntityId,
+                    interruptedEntityId = interruptedEntityId
                 )
 
                 store.saveMappings(mappings)

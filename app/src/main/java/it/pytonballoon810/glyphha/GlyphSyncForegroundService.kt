@@ -4,12 +4,12 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.pm.PackageManager
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -113,30 +113,35 @@ class GlyphSyncForegroundService : Service() {
                     var nextDelayMs = POLL_INTERVAL_MS
 
                     try {
-                        val state = withContext(Dispatchers.IO) {
-                            client.fetchState(mapping.entityId)
+                        val progressState = withContext(Dispatchers.IO) {
+                            client.fetchState(mapping.progressEntityId)
                         }
 
-                        val secondaryText = mapping.secondaryTextEntityId?.let { secondaryEntity ->
+                        val remainingText = mapping.remainingTimeEntityId?.let { remainingEntity ->
                             withContext(Dispatchers.IO) {
-                                client.fetchState(secondaryEntity)
+                                client.fetchState(remainingEntity)
                             }.let { formatSecondaryText(it) }
                         }
 
-                        when (mapping.mode) {
-                            DisplayMode.RAW_NUMBER -> glyphController.render(mapping, state)
-                            DisplayMode.PROGRESS -> {
-                                nextDelayMs = handleProgressMapping(
-                                    mapping = mapping,
-                                    state = state,
-                                    secondaryText = secondaryText,
-                                    completionIconType = completionIconType,
-                                    customIconData = customIconData
-                                )
-                            }
+                        val interrupted = mapping.interruptedEntityId?.let { interruptedEntity ->
+                            withContext(Dispatchers.IO) {
+                                client.fetchState(interruptedEntity)
+                            }.let { isInterruptedState(it) }
+                        } ?: false
+
+                        nextDelayMs = if (interrupted) {
+                            handleInterruptedMapping(mapping)
+                        } else {
+                            handleProgressMapping(
+                                mapping = mapping,
+                                progressState = progressState,
+                                secondaryText = remainingText,
+                                completionIconType = completionIconType,
+                                customIconData = customIconData
+                            )
                         }
 
-                        updateNotification(getString(R.string.notification_syncing, mapping.entityId))
+                        updateNotification(getString(R.string.notification_syncing, mapping.progressEntityId))
                     } catch (e: Exception) {
                         updateNotification(getString(R.string.notification_sync_error, e.message ?: "unknown"))
                     }
@@ -154,45 +159,57 @@ class GlyphSyncForegroundService : Service() {
         glyphController.stop()
     }
 
+    private fun handleInterruptedMapping(mapping: SensorMapping): Long {
+        val progressState = progressStates.getOrPut(mapping.progressEntityId) { ProgressState(trackingEnabled = true) }
+        progressState.completedWaitingForScreenOn = false
+        progressState.trackingEnabled = true
+        progressState.blinkOn = false
+        progressState.scrollOffsetPx = 0
+        progressState.lastSecondaryText = ""
+
+        glyphController.renderInterruptedX()
+        return INTERRUPTED_REFRESH_MS
+    }
+
     private fun handleProgressMapping(
         mapping: SensorMapping,
-        state: SensorState,
+        progressState: SensorState,
         secondaryText: String?,
         completionIconType: CompletionIconType,
         customIconData: CustomIconData?
     ): Long {
-        val value = state.value ?: return POLL_INTERVAL_MS
+        val value = progressState.value ?: return POLL_INTERVAL_MS
         val max = mapping.maxValue.coerceAtLeast(1.0)
         val ratio = (value / max).coerceIn(0.0, 1.0)
 
-        val progressState = progressStates.getOrPut(mapping.entityId) { ProgressState(trackingEnabled = true) }
+        val runtimeState = progressStates.getOrPut(mapping.progressEntityId) { ProgressState(trackingEnabled = true) }
         val normalizedSecondaryText = secondaryText?.trim().orEmpty()
 
-        if (progressState.lastSecondaryText != normalizedSecondaryText) {
-            progressState.lastSecondaryText = normalizedSecondaryText
-            progressState.scrollOffsetPx = 0
+        if (runtimeState.lastSecondaryText != normalizedSecondaryText) {
+            runtimeState.lastSecondaryText = normalizedSecondaryText
+            runtimeState.scrollOffsetPx = 0
         }
 
         if (ratio <= 0.005) {
-            progressState.trackingEnabled = true
-            progressState.completedWaitingForScreenOn = false
-            progressState.blinkOn = true
+            runtimeState.trackingEnabled = true
+            runtimeState.completedWaitingForScreenOn = false
+            runtimeState.blinkOn = true
         }
 
-        if (!progressState.trackingEnabled) {
+        if (!runtimeState.trackingEnabled) {
             glyphController.clearAppDisplay()
             return POLL_INTERVAL_MS
         }
 
-        if (progressState.completedWaitingForScreenOn) {
-            progressState.blinkOn = !progressState.blinkOn
-            glyphController.renderCompletionBlink(progressState.blinkOn, completionIconType, customIconData)
+        if (runtimeState.completedWaitingForScreenOn) {
+            runtimeState.blinkOn = !runtimeState.blinkOn
+            glyphController.renderCompletionBlink(runtimeState.blinkOn, completionIconType, customIconData)
             return BLINK_INTERVAL_MS
         }
 
         if (ratio >= COMPLETION_THRESHOLD) {
-            progressState.completedWaitingForScreenOn = true
-            progressState.blinkOn = true
+            runtimeState.completedWaitingForScreenOn = true
+            runtimeState.blinkOn = true
             glyphController.renderCompletionBlink(true, completionIconType, customIconData)
             return BLINK_INTERVAL_MS
         }
@@ -200,15 +217,15 @@ class GlyphSyncForegroundService : Service() {
         val hasOverflow = glyphController.renderProgressRatio(
             ratio = ratio,
             subText = normalizedSecondaryText.ifBlank { null },
-            scrollOffsetPx = progressState.scrollOffsetPx
+            scrollOffsetPx = runtimeState.scrollOffsetPx
         )
 
         if (hasOverflow) {
-            progressState.scrollOffsetPx += 1
+            runtimeState.scrollOffsetPx += 1
             return TEXT_SCROLL_INTERVAL_MS
         }
 
-        progressState.scrollOffsetPx = 0
+        runtimeState.scrollOffsetPx = 0
         return POLL_INTERVAL_MS
     }
 
@@ -267,15 +284,27 @@ class GlyphSyncForegroundService : Service() {
         return raw
     }
 
+    private fun isInterruptedState(state: SensorState): Boolean {
+        val raw = state.rawState.trim().lowercase()
+        if (raw.isBlank() || raw == "unknown" || raw == "unavailable") return false
+
+        return raw == "on" ||
+            raw == "true" ||
+            raw == "open" ||
+            raw == "problem" ||
+            raw == "error" ||
+            raw == "interrupted" ||
+            raw == "1"
+    }
+
     private fun syncProgressStateMap(mappings: List<SensorMapping>) {
         val validProgressIds = mappings
-            .filter { it.mode == DisplayMode.PROGRESS }
-            .map { it.entityId }
+            .map { it.progressEntityId }
             .toSet()
 
         progressStates.keys.retainAll(validProgressIds)
-        validProgressIds.forEach { entityId ->
-            progressStates.putIfAbsent(entityId, ProgressState(trackingEnabled = true))
+        validProgressIds.forEach { progressEntityId ->
+            progressStates.putIfAbsent(progressEntityId, ProgressState(trackingEnabled = true))
         }
     }
 
@@ -338,6 +367,7 @@ class GlyphSyncForegroundService : Service() {
         private const val POLL_INTERVAL_MS = 5000L
         private const val BLINK_INTERVAL_MS = 600L
         private const val TEXT_SCROLL_INTERVAL_MS = 800L
+        private const val INTERRUPTED_REFRESH_MS = 1000L
         private const val COMPLETION_THRESHOLD = 0.999
     }
 }

@@ -24,11 +24,32 @@ class SensorMappingStore(context: Context) {
         val output = mutableListOf<SensorMapping>()
         for (i in 0 until jsonArray.length()) {
             val item = jsonArray.getJSONObject(i)
+            val useCaseRaw = item.optString("useCase", "")
+            if (useCaseRaw.isNotBlank()) {
+                output += SensorMapping(
+                    useCase = UseCaseType.entries.firstOrNull { it.name == useCaseRaw }
+                        ?: UseCaseType.TRACK_3D_PRINTER_PROGRESS,
+                    progressEntityId = item.optString("progressEntityId", "").ifBlank {
+                        item.optString("entityId", "")
+                    },
+                    maxValue = item.optDouble("maxValue", 100.0),
+                    remainingTimeEntityId = item.optString("remainingTimeEntityId", "").ifBlank {
+                        item.optString("secondaryTextEntityId", "")
+                    }.ifBlank { null },
+                    interruptedEntityId = item.optString("interruptedEntityId", "").ifBlank { null }
+                )
+                continue
+            }
+
+            // Legacy migration path from mode-based records.
+            val legacyEntity = item.optString("entityId", "")
+            if (legacyEntity.isBlank()) continue
             output += SensorMapping(
-                entityId = item.getString("entityId"),
-                mode = DisplayMode.valueOf(item.getString("mode")),
+                useCase = UseCaseType.TRACK_3D_PRINTER_PROGRESS,
+                progressEntityId = legacyEntity,
                 maxValue = item.optDouble("maxValue", 100.0),
-                secondaryTextEntityId = item.optString("secondaryTextEntityId", "").ifBlank { null }
+                remainingTimeEntityId = item.optString("secondaryTextEntityId", "").ifBlank { null },
+                interruptedEntityId = null
             )
         }
         return output
@@ -38,10 +59,11 @@ class SensorMappingStore(context: Context) {
         val array = JSONArray()
         mappings.forEach {
             val obj = JSONObject()
-                .put("entityId", it.entityId)
-                .put("mode", it.mode.name)
+                .put("useCase", it.useCase.name)
+                .put("progressEntityId", it.progressEntityId)
                 .put("maxValue", it.maxValue)
-                .put("secondaryTextEntityId", it.secondaryTextEntityId ?: "")
+                .put("remainingTimeEntityId", it.remainingTimeEntityId ?: "")
+                .put("interruptedEntityId", it.interruptedEntityId ?: "")
             array.put(obj)
         }
         prefs.edit().putString(KEY_MAPPINGS, array.toString()).apply()

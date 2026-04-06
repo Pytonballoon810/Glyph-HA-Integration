@@ -55,15 +55,9 @@ class GlyphController(private val context: Context) {
 
     fun render(mapping: SensorMapping, state: SensorState) {
         if (!initialized) return
-
-        when (mapping.mode) {
-            DisplayMode.RAW_NUMBER -> renderRawNumber(state)
-            DisplayMode.PROGRESS -> {
-                val value = state.value ?: return
-                val denominator = mapping.maxValue.coerceAtLeast(1.0)
-                renderProgressRatio((value / denominator).coerceIn(0.0, 1.0))
-            }
-        }
+        val value = state.value ?: return
+        val denominator = mapping.maxValue.coerceAtLeast(1.0)
+        renderProgressRatio((value / denominator).coerceIn(0.0, 1.0))
     }
 
     fun clearAppDisplay() {
@@ -77,6 +71,25 @@ class GlyphController(private val context: Context) {
     private fun renderRawNumber(state: SensorState) {
         val text = state.value?.let { String.format("%.1f", it) } ?: state.rawState
         renderRawText(text)
+    }
+
+    fun renderInterruptedX() {
+        val interruptedBitmap = buildInterruptedBitmap(matrixSize)
+        val iconObject = GlyphMatrixObject.Builder()
+            .setImageSource(interruptedBitmap)
+            .setBrightness(255)
+            .build()
+
+        val frame = GlyphMatrixFrame.Builder()
+            .addTop(iconObject)
+            .build(context)
+
+        try {
+            matrixManager.setAppMatrixFrame(frame)
+        } catch (_: GlyphException) {
+        }
+
+        saveCurrentRenderData("INTERRUPTED")
     }
 
     fun renderRawText(text: String) {
@@ -486,6 +499,25 @@ class GlyphController(private val context: Context) {
         }
 
         return bitmap
+    }
+
+    private fun buildInterruptedBitmap(size: Int): Bitmap {
+        val pattern = listOf(
+            "XX.........XX",
+            ".XX.......XX.",
+            "..XX.....XX..",
+            "...XX...XX...",
+            "....XX.XX....",
+            ".....XXX.....",
+            "......X......",
+            ".....XXX.....",
+            "....XX.XX....",
+            "...XX...XX...",
+            "..XX.....XX..",
+            ".XX.......XX.",
+            "XX.........XX"
+        )
+        return buildPatternBitmap(size, pattern)
     }
 
     private fun buildPatternBitmap(size: Int, pattern: List<String>): Bitmap {
