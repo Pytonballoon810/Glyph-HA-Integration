@@ -84,7 +84,7 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
   - optional secondary sensor text rendered under bar
   - secondary duration-like text is normalized (e.g. `0h 1m` -> `1m`)
   - overflow text uses billboard-style scrolling only when overflow exceeds a very small threshold
-  - overflow scroll target speed is approximately 200 words per minute
+  - overflow scroll target speed is approximately 400 words per minute
   - completion blink mode and reset rules handled in service logic
 - Generic tracking behavior:
   - supports progress or number/text render mode

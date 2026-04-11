@@ -77,6 +77,9 @@ class GlyphSyncForegroundService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
+            ACTION_RELOAD -> {
+                handleReloadRequested()
+            }
             ACTION_MAPPINGS_UPDATED -> {
                 handleMappingsUpdated()
             }
@@ -299,6 +302,20 @@ class GlyphSyncForegroundService : Service() {
         ensurePolling()
     }
 
+    private fun handleReloadRequested() {
+        updateNotification(getString(R.string.notification_reloading_service))
+        pollingJob?.cancel()
+        pollingJob = null
+
+        glyphController.stop()
+        glyphController.start()
+        glyphController.clearAppDisplay()
+
+        progressStates.clear()
+        genericStates.clear()
+        ensurePolling()
+    }
+
     private fun handleInterruptedMapping(mapping: SensorMapping): Long {
         val progressState = progressStates.getOrPut(mapping.progressEntityId) { ProgressState(trackingEnabled = true) }
         progressState.completedWaitingForScreenOn = false
@@ -516,6 +533,7 @@ class GlyphSyncForegroundService : Service() {
     companion object {
         const val ACTION_START = "it.pytonballoon810.glyphha.action.START"
         const val ACTION_STOP = "it.pytonballoon810.glyphha.action.STOP"
+        const val ACTION_RELOAD = "it.pytonballoon810.glyphha.action.RELOAD"
         const val ACTION_MAPPINGS_UPDATED = "it.pytonballoon810.glyphha.action.MAPPINGS_UPDATED"
 
         private const val CHANNEL_ID = "glyph_sync_channel"
@@ -523,7 +541,7 @@ class GlyphSyncForegroundService : Service() {
         private const val POLL_INTERVAL_MS = 5000L
         private const val BLINK_INTERVAL_MS = 600L
         private const val TEXT_SCROLL_INTERVAL_MS = 800L
-        private const val TARGET_SCROLL_WORDS_PER_MIN = 200
+        private const val TARGET_SCROLL_WORDS_PER_MIN = 400
         private const val AVG_CHARS_PER_WORD = 5
         private const val APPROX_CHAR_WIDTH_PX = 4
         private const val TARGET_SCROLL_CHARS_PER_MIN = TARGET_SCROLL_WORDS_PER_MIN * AVG_CHARS_PER_WORD

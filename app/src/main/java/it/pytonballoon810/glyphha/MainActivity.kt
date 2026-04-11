@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var debugCurrentRenderDataText: TextView
     private lateinit var mappingsContainer: LinearLayout
     private lateinit var statusText: TextView
+    private lateinit var reloadServiceButton: MaterialButton
     private lateinit var glyphController: GlyphController
 
     private lateinit var store: SensorMappingStore
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var useCaseOptions: List<UseCaseOption>
     private lateinit var genericModeOptions: List<GenericModeOption>
     private var deviceMatrixSize: Int = 13
+    private var isSupportedGlyphDevice: Boolean = false
 
     private val mappings = mutableListOf<SensorMapping>()
     private val debugRenderHandler = Handler(Looper.getMainLooper())
@@ -181,9 +183,11 @@ class MainActivity : ComponentActivity() {
         debugCurrentRenderDataText = findViewById(R.id.debugCurrentRenderDataText)
         mappingsContainer = findViewById(R.id.mappingsContainer)
         statusText = findViewById(R.id.statusText)
+        reloadServiceButton = findViewById(R.id.reloadServiceButton)
 
-        deviceMatrixSize = Common.getDeviceMatrixLength().coerceAtLeast(5)
-        customIconEditor.setMatrixSize(deviceMatrixSize)
+        deviceMatrixSize = Common.getDeviceMatrixLength().coerceAtLeast(1)
+        isSupportedGlyphDevice = GlyphController.isSupportedMatrixSize(deviceMatrixSize)
+        customIconEditor.setMatrixSize(deviceMatrixSize.coerceAtLeast(5))
     }
 
     private fun setupUseCaseSpinner() {
@@ -376,6 +380,10 @@ class MainActivity : ComponentActivity() {
         }
 
         findViewById<MaterialButton>(R.id.debugRenderProgressButton).setOnClickListener {
+            if (!ensureSupportedGlyphDevice()) {
+                return@setOnClickListener
+            }
+
             val value = debugProgressValueInput.text?.toString()?.toDoubleOrNull()
             if (value == null) {
                 toast(getString(R.string.toast_enter_valid_progress))
@@ -390,6 +398,10 @@ class MainActivity : ComponentActivity() {
         }
 
         findViewById<MaterialButton>(R.id.debugRenderRawButton).setOnClickListener {
+            if (!ensureSupportedGlyphDevice()) {
+                return@setOnClickListener
+            }
+
             val text = debugRawTextInput.text?.toString().orEmpty().trim()
             if (text.isBlank()) {
                 toast(getString(R.string.toast_enter_text_or_number))
@@ -403,6 +415,10 @@ class MainActivity : ComponentActivity() {
         }
 
         findViewById<MaterialButton>(R.id.debugRenderIconButton).setOnClickListener {
+            if (!ensureSupportedGlyphDevice()) {
+                return@setOnClickListener
+            }
+
             val selectedType = iconOptions[debugIconSpinner.selectedItemPosition].type
             val customData = if (selectedType == CompletionIconType.CUSTOM) {
                 customIconEditor.getCustomIconData()
@@ -421,10 +437,27 @@ class MainActivity : ComponentActivity() {
         }
 
         findViewById<MaterialButton>(R.id.debugClearButton).setOnClickListener {
+            if (!ensureSupportedGlyphDevice()) {
+                return@setOnClickListener
+            }
+
             glyphController.start()
             glyphController.clearAppDisplay()
             updateCurrentRenderDataPanel()
             toast(getString(R.string.toast_display_cleared))
+        }
+
+        reloadServiceButton.setOnClickListener {
+            if (!ensureSupportedGlyphDevice()) {
+                return@setOnClickListener
+            }
+
+            val intent = Intent(this, GlyphSyncForegroundService::class.java).apply {
+                action = GlyphSyncForegroundService.ACTION_RELOAD
+            }
+            ContextCompat.startForegroundService(this, intent)
+            statusText.text = getString(R.string.status_reloading_service)
+            toast(getString(R.string.toast_service_reloaded))
         }
     }
 
@@ -492,6 +525,14 @@ class MainActivity : ComponentActivity() {
 
     private fun updateCurrentRenderDataPanel() {
         debugCurrentRenderDataText.text = glyphController.getCurrentRenderData()
+    }
+
+    private fun ensureSupportedGlyphDevice(): Boolean {
+        if (isSupportedGlyphDevice) return true
+
+        stopPolling(getString(R.string.status_device_not_supported))
+        toast(getString(R.string.toast_device_not_supported))
+        return false
     }
 
     private fun startPolling() {
@@ -722,6 +763,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateAutomaticSync() {
+        if (!isSupportedGlyphDevice) {
+            stopPolling(getString(R.string.status_device_not_supported))
+            return
+        }
+
         val hasConfig = store.loadBaseUrl().isNotBlank() && store.loadToken().isNotBlank()
         val hasMappings = mappings.isNotEmpty()
 
