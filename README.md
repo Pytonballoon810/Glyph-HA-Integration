@@ -32,7 +32,7 @@
 - Android Studio Koala or newer
 - Android SDK 35
 - Java 17
-- Compatible Nothing phone with Glyph Matrix support
+- Nothing Phone (3) or Nothing Phone (4)
 
 ## Quick Start
 
@@ -70,3 +70,4 @@ What the script does:
 
 - Rendering uses `setAppMatrixFrame(...)` for app-controlled Glyph output.
 - System-level Glyph UI can override app output due to priority rules.
+- The app enforces a runtime guard and stops sync on unsupported devices.
