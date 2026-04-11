@@ -75,6 +75,7 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
 - ADB may require `ANDROID_ADB_SERVER_PORT=5037` on this machine.
 - Glyph SDK AAR is local: `app/libs/glyph-matrix-sdk-2.0.aar`.
 - `minSdk` must stay compatible with the Nothing SDK requirement.
+- Runtime guard allows sync only on Nothing Phone (3)/(4) matrix profiles (25x25 or 13x13).
 - Progress mode behavior:
   - centered 3px bar
   - always-visible outline
@@ -82,7 +83,8 @@ Purpose: reduce token/context usage while keeping implementation quality high fo
   - moving arrow marker using custom pixel mask
   - optional secondary sensor text rendered under bar
   - secondary duration-like text is normalized (e.g. `0h 1m` -> `1m`)
-  - overflow text uses slow billboard-style scrolling only when overflow exceeds a small threshold
+  - overflow text uses billboard-style scrolling only when overflow exceeds a very small threshold
+  - overflow scroll target speed is approximately 200 words per minute
   - completion blink mode and reset rules handled in service logic
 - Generic tracking behavior:
   - supports progress or number/text render mode

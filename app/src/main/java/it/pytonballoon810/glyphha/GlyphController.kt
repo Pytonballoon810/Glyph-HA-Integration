@@ -604,6 +604,11 @@ class GlyphController(private val context: Context) {
     companion object {
         private const val RENDER_STATE_PREFS = "glyph_render_state"
         private const val KEY_CURRENT_RENDER_DATA = "current_render_data"
-        private const val MIN_SCROLL_OVERFLOW_PX = 4
+        private const val MIN_SCROLL_OVERFLOW_PX = 1
+        private val SUPPORTED_MATRIX_SIZES = setOf(13, 25)
+
+        fun isSupportedMatrixSize(matrixSize: Int): Boolean {
+            return matrixSize in SUPPORTED_MATRIX_SIZES
+        }
     }
 }

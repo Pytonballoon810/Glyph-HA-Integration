@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.nothing.ketchum.Common
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,6 +33,9 @@ class GlyphSyncForegroundService : Service() {
 
     private lateinit var store: SensorMappingStore
     private lateinit var glyphController: GlyphController
+    private val isSupportedGlyphDevice: Boolean by lazy {
+        GlyphController.isSupportedMatrixSize(Common.getDeviceMatrixLength())
+    }
 
     private var pollingJob: Job? = null
     private val progressStates = mutableMapOf<String, ProgressState>()
@@ -54,6 +58,15 @@ class GlyphSyncForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!isSupportedGlyphDevice) {
+            ensureForegroundStarted(getString(R.string.notification_device_not_supported))
+            stopSyncInternal(getString(R.string.notification_device_not_supported))
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            foregroundStarted = false
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         ensureForegroundStarted(getString(R.string.notification_waiting_config))
 
         when (intent?.action) {
@@ -348,7 +361,7 @@ class GlyphSyncForegroundService : Service() {
         )
 
         if (hasOverflow) {
-            runtimeState.scrollOffsetPx += 1
+            runtimeState.scrollOffsetPx += TEXT_SCROLL_STEP_PX
             return TEXT_SCROLL_INTERVAL_MS
         }
 
@@ -510,6 +523,13 @@ class GlyphSyncForegroundService : Service() {
         private const val POLL_INTERVAL_MS = 5000L
         private const val BLINK_INTERVAL_MS = 600L
         private const val TEXT_SCROLL_INTERVAL_MS = 800L
+        private const val TARGET_SCROLL_WORDS_PER_MIN = 200
+        private const val AVG_CHARS_PER_WORD = 5
+        private const val APPROX_CHAR_WIDTH_PX = 4
+        private const val TARGET_SCROLL_CHARS_PER_MIN = TARGET_SCROLL_WORDS_PER_MIN * AVG_CHARS_PER_WORD
+        private val TEXT_SCROLL_STEP_PX = (
+            (TARGET_SCROLL_CHARS_PER_MIN * APPROX_CHAR_WIDTH_PX * TEXT_SCROLL_INTERVAL_MS) / 60000.0
+            ).roundToInt().coerceAtLeast(1)
         private const val INTERRUPTED_REFRESH_MS = 1000L
         private const val COMPLETION_THRESHOLD = 0.999
         private const val NUMERIC_MATCH_EPSILON = 0.000001
