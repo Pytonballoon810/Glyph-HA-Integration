@@ -29,6 +29,7 @@ import kotlin.math.roundToInt
 class GlyphSyncForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var foregroundStarted = false
+    private var allowAutoRestart = true
 
     private lateinit var store: SensorMappingStore
     private lateinit var glyphController: GlyphController
@@ -58,6 +59,8 @@ class GlyphSyncForegroundService : Service() {
 
         when (intent?.action) {
             ACTION_STOP -> {
+                allowAutoRestart = false
+                GlyphServiceManager.cancelScheduledRestart(this)
                 stopSyncInternal("Stopped")
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 foregroundStarted = false
@@ -65,20 +68,36 @@ class GlyphSyncForegroundService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_MAPPINGS_UPDATED -> {
+                allowAutoRestart = true
                 handleMappingsUpdated()
             }
             ACTION_START, null -> {
+                allowAutoRestart = true
                 ensurePolling()
             }
         }
+        GlyphServiceManager.cancelScheduledRestart(this)
         return START_STICKY
     }
 
     override fun onDestroy() {
+        val shouldRestart = allowAutoRestart && GlyphServiceManager.shouldAutoRun(this)
         stopSyncInternal("Stopped")
         unregisterReceiver(screenOnReceiver)
         serviceScope.coroutineContext.cancel()
+        if (shouldRestart) {
+            GlyphServiceManager.scheduleRestart(this)
+        } else {
+            GlyphServiceManager.cancelScheduledRestart(this)
+        }
         super.onDestroy()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (allowAutoRestart && GlyphServiceManager.shouldAutoRun(this)) {
+            GlyphServiceManager.scheduleRestart(this)
+        }
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
