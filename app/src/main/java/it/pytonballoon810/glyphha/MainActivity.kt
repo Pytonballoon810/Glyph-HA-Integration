@@ -1,7 +1,6 @@
 package it.pytonballoon810.glyphha
 
 import android.app.AlertDialog
-import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -15,7 +14,6 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
@@ -329,6 +327,7 @@ class MainActivity : ComponentActivity() {
             store.saveConnection(baseUrl, token)
             toast(getString(R.string.toast_connection_saved))
             updateAutomaticSync()
+            GlyphServiceManager.scheduleRestart(this, 2_000L)
         }
 
         findViewById<MaterialButton>(R.id.addSensorButton).setOnClickListener {
@@ -358,6 +357,7 @@ class MainActivity : ComponentActivity() {
             resetMappingFormInputs()
             notifyMappingsUpdated()
             updateAutomaticSync()
+            GlyphServiceManager.scheduleRestart(this, 2_000L)
         }
 
         findViewById<MaterialButton>(R.id.saveCompletionIconButton).setOnClickListener {
@@ -536,18 +536,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startPolling() {
-        val intent = Intent(this, GlyphSyncForegroundService::class.java).apply {
-            action = GlyphSyncForegroundService.ACTION_START
-        }
-        ContextCompat.startForegroundService(this, intent)
+        GlyphServiceManager.startSyncService(this)
         statusText.text = getString(R.string.status_background_sync_active)
     }
 
     private fun stopPolling(reason: String = "Stopped") {
-        val intent = Intent(this, GlyphSyncForegroundService::class.java).apply {
-            action = GlyphSyncForegroundService.ACTION_STOP
-        }
-        startService(intent)
+        GlyphServiceManager.startSyncService(this, GlyphSyncForegroundService.ACTION_STOP)
         statusText.text = reason
     }
 
@@ -581,6 +575,7 @@ class MainActivity : ComponentActivity() {
                     renderMappings()
                     notifyMappingsUpdated()
                     updateAutomaticSync()
+                    GlyphServiceManager.scheduleRestart(this, 2_000L)
                 }
             }
 
@@ -703,6 +698,7 @@ class MainActivity : ComponentActivity() {
                 renderMappings()
                 notifyMappingsUpdated()
                 updateAutomaticSync()
+                GlyphServiceManager.scheduleRestart(this, 2_000L)
                 toast(getString(R.string.toast_mapping_updated))
             }
             .show()
@@ -752,10 +748,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun notifyMappingsUpdated() {
-        val intent = Intent(this, GlyphSyncForegroundService::class.java).apply {
-            action = GlyphSyncForegroundService.ACTION_MAPPINGS_UPDATED
-        }
-        ContextCompat.startForegroundService(this, intent)
+        GlyphServiceManager.startSyncService(this, GlyphSyncForegroundService.ACTION_MAPPINGS_UPDATED)
     }
 
     private fun toast(text: String) {
@@ -774,6 +767,7 @@ class MainActivity : ComponentActivity() {
         if (hasConfig && hasMappings) {
             startPolling()
         } else {
+            GlyphServiceManager.cancelScheduledRestart(this)
             stopPolling(
                 when {
                     !hasConfig -> getString(R.string.status_waiting_credentials)
